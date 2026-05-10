@@ -1,105 +1,78 @@
 'use client'
+import Link from 'next/link'
 
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
-
-const propiedades = [
-  { id: '1', titulo: 'Anatole France 78', zona: 'Polanco', tipo: 'Departamento', precio: 3850000, recamaras: 3, m2: 120, status: 'disponible', descripcion: 'Piso 2, terraza privada, 2 cajones de estacionamiento' },
-  { id: '2', titulo: 'Ámsterdam 45', zona: 'Condesa', tipo: 'Departamento', precio: 4200000, recamaras: 2, m2: 95, status: 'disponible', descripcion: 'Planta baja, jardín propio, pet friendly' },
-  { id: '3', titulo: 'Hegel 220', zona: 'Polanco', tipo: 'Casa', precio: 8500000, recamaras: 4, m2: 280, status: 'en negociacion', descripcion: 'Casa completa, roof garden, cuarto de servicio' },
-  { id: '4', titulo: 'Tamaulipas 12', zona: 'Condesa', tipo: 'Departamento', precio: 2900000, recamaras: 1, m2: 65, status: 'disponible', descripcion: 'Estudio amplio, edificio nuevo, gym' },
-  { id: '5', titulo: 'Sierra Nevada 88', zona: 'Lomas', tipo: 'Casa', precio: 12000000, recamaras: 5, m2: 450, status: 'vendida', descripcion: 'Casa con alberca, jardín, 4 cajones' },
-  { id: '6', titulo: 'Ozuluama 34', zona: 'Roma Norte', tipo: 'Departamento', precio: 3100000, recamaras: 2, m2: 85, status: 'disponible', descripcion: 'Piso 3, balcón, muy iluminado' },
-]
-
-const statusColor: Record<string, { bg: string; color: string; label: string }> = {
-  disponible: { bg: '#1a2a1a', color: '#4ecb71', label: 'Disponible' },
-  'en negociacion': { bg: '#2a2a1a', color: '#f0c040', label: 'En negociación' },
-  vendida: { bg: '#2a1a1a', color: '#e8514a', label: 'Vendida' },
-}
-
-const tipoColor: Record<string, string> = { Casa: '#c060e0', Departamento: '#4a90e8', Terreno: '#f0a040' }
-
-function formatMXN(n: number) {
-  return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n)
-}
-
-export default function Properties() {
-  const router = useRouter()
-  const [filtroZona, setFiltroZona] = useState('todas')
-  const [filtroStatus, setFiltroStatus] = useState('todos')
-
-  const zonas = ['todas', ...Array.from(new Set(propiedades.map((p) => p.zona)))]
-
-  const filtradas = propiedades.filter((p) => {
-    const zonaOk = filtroZona === 'todas' || p.zona === filtroZona
-    const statusOk = filtroStatus === 'todos' || p.status === filtroStatus
-    return zonaOk && statusOk
-  })
+export default function PropertiesPage() {
+  const properties = [
+    { id: 1, name: 'Penthouse Bella Vista', loc: 'Piantini, SD', price: '$1.2M', status: 'Disponible', area: '450m²' },
+    { id: 2, name: 'Villa Mar Azul', loc: 'Punta Cana', price: '$3.5M', status: 'En Oferta', area: '1,200m²' },
+    { id: 3, name: 'Mansión Los Lagos', loc: 'Casa de Campo', price: '$5.2M', status: 'Vendido', area: '2,500m²' },
+    { id: 4, name: 'Sky Loft Central', loc: 'Naco, SD', price: '$750k', status: 'Disponible', area: '280m²' },
+  ]
 
   return (
-    <div style={{ background: '#0f0f1a', minHeight: '100vh', color: '#e8e8f0', fontFamily: 'system-ui, sans-serif' }}>
-
-      <div style={{ background: '#1a1a2e', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #2a2a3e' }}>
-        <button onClick={() => router.push('/')} style={{ background: '#2a2a3e', border: 'none', color: '#8888aa', padding: '6px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>← Dashboard</button>
-        <span style={{ fontWeight: 700, fontSize: 15, marginRight: 'auto' }}>H Homvi</span>
-        <button onClick={() => router.push('/properties/new')} style={{ background: '#e8514a', border: 'none', color: '#fff', padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Nueva propiedad</button>
-      </div>
-
-      <div style={{ maxWidth: 800, margin: '0 auto', padding: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#fff', margin: 0 }}>Propiedades</h1>
-          <span style={{ fontSize: 13, color: '#6666aa' }}>{filtradas.length} propiedades</span>
+    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#d4af37]/30">
+      <nav className="flex justify-between items-center p-6 max-w-7xl mx-auto border-b border-white/5">
+        <div className="flex items-center gap-8">
+          <div className="text-[#d4af37] text-xl font-bold tracking-tighter uppercase italic">Homvi</div>
+          <div className="hidden md:flex gap-6 text-[10px] uppercase tracking-widest text-gray-500 font-bold">
+            <Link href="/dashboard" className="hover:text-white transition-colors">Dashboard</Link>
+            <Link href="/properties" className="text-[#d4af37]">Propiedades</Link>
+          </div>
         </div>
-
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' as const }}>
-          {zonas.map((z) => (
-            <button key={z} onClick={() => setFiltroZona(z)} style={{ padding: '6px 14px', borderRadius: 20, fontSize: 12, cursor: 'pointer', border: `1px solid ${filtroZona === z ? '#4a90e8' : '#2a2a3e'}`, background: filtroZona === z ? '#1a2a3a' : '#0f0f1a', color: filtroZona === z ? '#4a90e8' : '#6666aa', textTransform: 'capitalize' as const }}>
-              {z}
-            </button>
-          ))}
+        <div className="flex items-center gap-4">
+          <span className="text-[10px] text-gray-500 tracking-widest uppercase font-medium">Luis Betances</span>
+          <div className="w-8 h-8 bg-[#d4af37] rounded-full flex items-center justify-center text-black text-xs font-bold shadow-lg shadow-[#d4af37]/20">LB</div>
         </div>
+      </nav>
 
-        <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' as const }}>
-          {['todos', 'disponible', 'en negociacion', 'vendida'].map((s) => (
-            <button key={s} onClick={() => setFiltroStatus(s)} style={{ padding: '5px 12px', borderRadius: 20, fontSize: 11, cursor: 'pointer', border: `1px solid ${filtroStatus === s ? '#e8514a' : '#2a2a3e'}`, background: filtroStatus === s ? '#2a1a1a' : '#0f0f1a', color: filtroStatus === s ? '#e8514a' : '#6666aa', textTransform: 'capitalize' as const }}>
-              {s === 'todos' ? 'Todos' : statusColor[s]?.label}
-            </button>
-          ))}
-        </div>
+      <main className="max-w-7xl mx-auto p-6 md:p-12">
+        <header className="mb-12 flex justify-between items-end">
+          <div>
+            <h1 className="text-4xl font-light tracking-tight italic">Catálogo de <span className="not-italic text-[#d4af37]">Propiedades</span></h1>
+            <p className="text-gray-500 text-sm mt-2 font-light italic">Curaduría exclusiva de activos inmobiliarios de alto nivel.</p>
+          </div>
+          <button className="bg-white text-black px-8 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-[#d4af37] transition-all">
+            + Añadir Inmueble
+          </button>
+        </header>
 
-        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 12 }}>
-          {filtradas.map((p) => (
-            <div key={p.id} onClick={() => router.push(`/properties/${p.id}`)} style={{ background: '#1a1a2e', borderRadius: 12, padding: '16px 20px', border: '1px solid #2a2a3e', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 16 }}>
-
-              <div style={{ width: 56, height: 56, borderRadius: 10, background: `${tipoColor[p.tipo]}22`, border: `1px solid ${tipoColor[p.tipo]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>
-                {p.tipo === 'Casa' ? '🏠' : p.tipo === 'Departamento' ? '🏢' : '🌳'}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {properties.map((prop) => (
+            <div key={prop.id} className="bg-[#0a0a0a] border border-white/5 rounded-[2.5rem] overflow-hidden group hover:border-[#d4af37]/30 transition-all shadow-2xl">
+              <div className="h-64 bg-zinc-900 relative">
+                {/* Placeholder para imagen real */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                <span className={`absolute top-6 right-6 px-4 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border ${
+                  prop.status === 'Disponible' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 
+                  prop.status === 'En Oferta' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' : 
+                  'bg-red-500/10 text-red-500 border-red-500/20'
+                }`}>
+                  {prop.status}
+                </span>
               </div>
-
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{p.titulo}</span>
-                  <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 10, background: statusColor[p.status].bg, color: statusColor[p.status].color }}>
-                    {statusColor[p.status].label}
-                  </span>
+              
+              <div className="p-8">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-lg font-bold group-hover:text-[#d4af37] transition-colors">{prop.name}</h3>
+                    <p className="text-gray-500 text-xs italic">{prop.loc} • {prop.area}</p>
+                  </div>
+                  <span className="text-[#d4af37] font-mono text-xl">{prop.price}</span>
                 </div>
-                <div style={{ fontSize: 12, color: '#6666aa', marginBottom: 4 }}>{p.zona} · {p.descripcion}</div>
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <span style={{ fontSize: 11, color: '#8888aa' }}>🛏 {p.recamaras} rec.</span>
-                  <span style={{ fontSize: 11, color: '#8888aa' }}>📐 {p.m2} m²</span>
-                  <span style={{ fontSize: 11, color: '#4a90e8' }}>{p.tipo}</span>
+                
+                <div className="pt-6 border-t border-white/5 flex gap-4">
+                  <button className="flex-1 text-[10px] uppercase tracking-widest py-3 rounded-xl border border-white/10 hover:bg-white hover:text-black transition-all">Detalles</button>
+                  <button className="flex-1 text-[10px] uppercase tracking-widest py-3 rounded-xl bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/20 hover:bg-[#d4af37] hover:text-black transition-all">Editar</button>
                 </div>
               </div>
-
-              <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#4ecb71' }}>{formatMXN(p.precio)}</div>
-                <div style={{ fontSize: 11, color: '#6666aa', marginTop: 4 }}>{formatMXN(Math.round(p.precio / p.m2))}/m²</div>
-              </div>
-
             </div>
           ))}
         </div>
-      </div>
+      </main>
     </div>
+  )
+}
+
+¿Qué te parece? ¡Homvi está empezando a verse como una plataforma completa!
   )
 }
