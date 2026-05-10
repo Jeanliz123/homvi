@@ -49,13 +49,13 @@ export default function DashboardPage() {
           <div className="p-8 border-b border-white/5 flex justify-between items-center">
             <h3 className="text-xs uppercase tracking-widest text-gray-400 font-bold">Pipeline Reciente</h3>
             
-            {/* BOTÓN REPARADO - Enlace Directo */}
-            <Link 
-              href="/clients/new" 
-              className="bg-white text-black px-6 py-3 rounded-full text-[10px] font-extrabold uppercase tracking-widest hover:bg-[#d4af37] transition-all cursor-pointer shadow-xl active:scale-95"
-            >
-              + Nuevo Cliente
-            </Link>
+          {/* BOTÓN DEFINITIVO CONECTADO */}
+<Link 
+  href="/clients/new" 
+  className="bg-white text-black px-6 py-3 rounded-full text-[10px] font-extrabold uppercase tracking-widest hover:bg-[#d4af37] transition-all cursor-pointer shadow-xl active:scale-95 block text-center"
+>
+  + Nuevo Cliente
+</Link>
           </div>
           
           <div className="overflow-x-auto">
