@@ -44,7 +44,28 @@ export default function PropertiesPage() {
       image: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&q=80&w=800'
     },
   ]
+{filteredProperties.map(prop => (
+  <div key={prop.id} className="bg-[#0a0a0a] border border-white/5 p-4 rounded-[2.5rem] hover:border-[#d4af37]/30 transition-all group flex flex-col">
+    
+    {/* LA FOTO */}
+    <div className="h-64 w-full mb-6 overflow-hidden rounded-[2rem]">
+      <img 
+        src={prop.image} 
+        alt={prop.name} 
+        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+      />
+    </div>
 
+    {/* EL RESTO DEL CONTENIDO QUE YA TENÍAS... */}
+    <div className="px-2">
+       <div className="flex justify-between items-start mb-4">
+         <h3 className="font-bold uppercase tracking-tighter text-sm">{prop.name}</h3>
+         <span className="text-[#d4af37] font-mono text-sm">{prop.price}</span>
+       </div>
+       {/* ... el resto de tu código ... */}
+    </div>
+  </div>
+))}
   const filteredProperties = allProperties.filter(prop => {
     const matchesSearch = prop.name.toLowerCase().includes(search.toLowerCase()) || 
                           prop.loc.toLowerCase().includes(search.toLowerCase())
