@@ -8,16 +8,16 @@ export default function PropertyDetail() {
   const [sent, setSent] = useState(false)
 
   const propertyData = {
-    "1": { 
+   "1": { 
       name: 'Penthouse Bella Vista', 
       loc: 'Piantini, SD', 
       price: '$1.2M', 
       area: '450m²', 
       rooms: 4, 
       images: [
-        'https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?auto=format&fit=crop&w=1200&q=80',
-        'https://images.unsplash.com/photo-1600607687940-4e2a27690a17?auto=format&fit=crop&w=800&q=80',
-        'https://images.unsplash.com/photo-1600566753190-17f0bb2a6c3e?auto=format&fit=crop&w=800&q=80'
+        'https://images.pexels.com/photos/276724/pexels-photo-276724.jpeg?auto=compress&cs=tinysrgb&w=1200',
+        'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://images.pexels.com/photos/1571468/pexels-photo-1571468.jpeg?auto=compress&cs=tinysrgb&w=800'
       ]
     },
     "2": { 
@@ -51,10 +51,9 @@ export default function PropertyDetail() {
       area: '280m²', 
       rooms: 2, 
       images: [
-        'https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=1200&q=80',
-        'https://images.unsplash.com/photo-1502005229762-f155f7707883?auto=format&fit=crop&w=800&q=80',
-        'https://images.unsplash.com/photo-1499955085172-a104c9463ece?auto=format&fit=crop&w=800&q=80'
-      ]
+        'https://images.pexels.com/photos/439391/pexels-photo-439391.jpeg?auto=compress&cs=tinysrgb&w=1200',
+        'https://images.pexels.com/photos/1571453/pexels-photo-1571453.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://images.pexels.com/photos/1571450/pexels-photo-1571450.jpeg?auto=compress&cs=tinysrgb&w=800'
     },
   }
 
