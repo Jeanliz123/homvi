@@ -61,18 +61,15 @@ export default function Page() {
           <div className="space-y-4">
             <div className="text-[#d4af37] text-3xl font-serif">01</div>
             <h3 className="text-xl font-medium tracking-tight">Pipeline Visual</h3>
-            <p className="text-gray-500 text-sm leading-relaxed">Visualiza el estado de cada cliente en tiempo real. De lead a cierre, sin fricción.</p>
-          </div>
+<p className="text-gray-400 text-sm leading-relaxed">Visualiza el estado de cada cliente en tiempo real. De lead a cierre, sin fricción.</p>          </div>
           <div className="space-y-4">
             <div className="text-[#d4af37] text-3xl font-serif">02</div>
             <h3 className="text-xl font-medium tracking-tight">Follow-ups Precisos</h3>
-            <p className="text-gray-500 text-sm leading-relaxed">Nunca pierda un seguimiento. Recordatorios, historial y priorización automática.</p>
-          </div>
+<p className="text-gray-400 text-sm leading-relaxed">Nunca pierda un seguimiento. Recordatorios, historial y priorización automática.</p>          </div>
           <div className="space-y-4">
             <div className="text-[#d4af37] text-3xl font-serif">03</div>
             <h3 className="text-xl font-medium tracking-tight">Catálogo Lujo</h3>
-            <p className="text-gray-500 text-sm leading-relaxed">Conecta clientes con propiedades. Filtra por zona, precio y características al instante.</p>
-          </div>
+<p className="text-gray-400 text-sm leading-relaxed">Conecta clientes con propiedades. Filtra por zona, precio y características al instante.</p>          </div>
         </div>
       </section>
 
