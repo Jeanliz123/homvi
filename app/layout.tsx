@@ -1,31 +1,27 @@
 'use client'
 
 import './globals.css'
+import { usePathname } from 'next/navigation'
 import Sidebar from './components/Sidebar'
-import MobileNav from './components/MobileNav' // <-- Importante: Asegúrate de que el archivo exista en app/components/
+import MobileNav from './components/MobileNav'
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const pathname = usePathname()
+  const isLanding = pathname === '/landing'
+
   return (
     <html lang="es">
       <body className="bg-black antialiased text-white">
         <div className="flex min-h-screen">
-          {/* Sidebar: Solo se ve en Desktop */}
-          <Sidebar /> 
-          
-          {/* 
-              ml-0 lg:ml-64 -> Maneja el espacio lateral para la Sidebar.
-              pb-20 lg:pb-0 -> Maneja el espacio inferior para la MobileNav en celulares.
-          */}
-          <main className="flex-1 ml-0 lg:ml-64 bg-[#050505] min-h-screen w-full pb-20 lg:pb-0">
+          {!isLanding && <Sidebar />}
+          <main className={`flex-1 bg-[#050505] min-h-screen w-full ${!isLanding ? 'ml-0 lg:ml-64 pb-20 lg:pb-0' : ''}`}>
             {children}
           </main>
-
-          {/* MobileNav: Solo se ve en Celulares */}
-          <MobileNav />
+          {!isLanding && <MobileNav />}
         </div>
       </body>
     </html>
