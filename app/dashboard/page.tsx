@@ -87,8 +87,7 @@ export default function Dashboard() {
                           {c.nombre.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <p className="text-sm font-medium group-hover:text-[#d4af37] transition-colors">{c.nombre}</p>
-                          <p className="text-gray-500 text-xs">{c.tipoPropiedad?.[0] || '—'}</p>
+<p className="text-sm font-medium group-hover:text-[#d4af37] transition-colors">{c.nombre.charAt(0).toUpperCase() + c.nombre.slice(1)}</p>                          <p className="text-gray-500 text-xs">{c.tipoPropiedad?.[0] || '—'}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
