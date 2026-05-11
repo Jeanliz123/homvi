@@ -2,6 +2,7 @@
 
 import './globals.css'
 import Sidebar from './components/Sidebar'
+import MobileNav from './components/MobileNav' // <-- Importante: Asegúrate de que el archivo exista en app/components/
 
 export default function RootLayout({
   children,
@@ -12,16 +13,19 @@ export default function RootLayout({
     <html lang="es">
       <body className="bg-black antialiased text-white">
         <div className="flex min-h-screen">
-          {/* El Sidebar debe tener sus propias reglas de 'hidden lg:block' adentro */}
+          {/* Sidebar: Solo se ve en Desktop */}
           <Sidebar /> 
           
           {/* 
-              ml-0: En móvil no hay margen izquierdo.
-              lg:ml-64: Solo en pantallas grandes (Desktop) se aplica el margen.
+              ml-0 lg:ml-64 -> Maneja el espacio lateral para la Sidebar.
+              pb-20 lg:pb-0 -> Maneja el espacio inferior para la MobileNav en celulares.
           */}
-          <main className="flex-1 ml-0 lg:ml-64 bg-[#050505] min-h-screen w-full">
+          <main className="flex-1 ml-0 lg:ml-64 bg-[#050505] min-h-screen w-full pb-20 lg:pb-0">
             {children}
           </main>
+
+          {/* MobileNav: Solo se ve en Celulares */}
+          <MobileNav />
         </div>
       </body>
     </html>
