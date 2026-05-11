@@ -1,16 +1,47 @@
 'use client'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+
+type Stage = 'LEAD' | 'BUSCANDO' | 'EN OFERTA' | 'CIERRE'
 
 export default function NewClientPage() {
   const router = useRouter()
   const [isSaving, setIsSaving] = useState(false)
+  const [nombre, setNombre] = useState('')
+  const [telefono, setTelefono] = useState('')
+  const [email, setEmail] = useState('')
+  const [propiedad, setPropiedad] = useState('')
+  const [presupuesto, setPresupuesto] = useState('')
+  const [etapa, setEtapa] = useState<Stage>('LEAD')
+  const [notas, setNotas] = useState('')
 
   const handleSave = () => {
+    if (!nombre.trim()) return
     setIsSaving(true)
+
+    const nuevoCliente = {
+      id: Date.now().toString(),
+      nombre,
+      telefono,
+      email,
+      etapa,
+      presupuestoMin: presupuesto,
+      presupuestoMax: '',
+      tipoPropiedad: propiedad ? [propiedad] : [],
+      recamaras: '',
+      plazo: '',
+      financiamiento: '',
+      zonas: [],
+      notas,
+    }
+
+    const guardados = localStorage.getItem('homvi_clientes')
+    const clientes = guardados ? JSON.parse(guardados) : []
+    clientes.push(nuevoCliente)
+    localStorage.setItem('homvi_clientes', JSON.stringify(clientes))
+
     setTimeout(() => {
-      router.push('/dashboard')
+      router.push(`/clients/${nuevoCliente.id}`)
     }, 1500)
   }
 
@@ -28,7 +59,9 @@ export default function NewClientPage() {
             <div className="space-y-2">
               <label className="text-xs uppercase tracking-[0.2em] text-[#d4af37] font-bold ml-1">Nombre Completo</label>
               <input 
-                type="text" 
+                type="text"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
                 placeholder="Ej. Julian Casablancas" 
                 className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm focus:border-[#d4af37] outline-none transition-all placeholder:text-gray-700 text-white" 
               />
@@ -36,7 +69,9 @@ export default function NewClientPage() {
             <div className="space-y-2">
               <label className="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold ml-1">Teléfono</label>
               <input 
-                type="tel" 
+                type="tel"
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
                 placeholder="Ej. +1 809 555 0000" 
                 className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm focus:border-[#d4af37] outline-none transition-all placeholder:text-gray-700 text-white" 
               />
@@ -46,7 +81,9 @@ export default function NewClientPage() {
           <div className="space-y-2">
             <label className="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold ml-1">Email</label>
             <input 
-              type="email" 
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="Ej. julian@email.com" 
               className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm focus:border-[#d4af37] outline-none transition-all placeholder:text-gray-700 text-white" 
             />
@@ -55,7 +92,9 @@ export default function NewClientPage() {
           <div className="space-y-2">
             <label className="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold ml-1">Propiedad de Interés</label>
             <input 
-              type="text" 
+              type="text"
+              value={propiedad}
+              onChange={(e) => setPropiedad(e.target.value)}
               placeholder="Ej. Mansión Los Lagos" 
               className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm focus:border-[#d4af37] outline-none transition-all placeholder:text-gray-700 text-white" 
             />
@@ -65,25 +104,32 @@ export default function NewClientPage() {
             <div className="space-y-2">
               <label className="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold ml-1">Presupuesto</label>
               <input 
-                type="text" 
+                type="text"
+                value={presupuesto}
+                onChange={(e) => setPresupuesto(e.target.value)}
                 placeholder="Ej. $500K - $1M" 
                 className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm focus:border-[#d4af37] outline-none transition-all placeholder:text-gray-700 text-white" 
               />
             </div>
             <div className="space-y-2">
               <label className="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold ml-1">Etapa</label>
-              <select className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm focus:border-[#d4af37] outline-none transition-all text-gray-400">
-                <option value="lead">Lead</option>
-                <option value="visita">Visita</option>
-                <option value="negociacion">Negociación</option>
-                <option value="cierre">Cierre</option>
+              <select
+                value={etapa}
+                onChange={(e) => setEtapa(e.target.value as Stage)}
+                className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm focus:border-[#d4af37] outline-none transition-all text-gray-400">
+                <option value="LEAD">Lead</option>
+                <option value="BUSCANDO">Buscando</option>
+                <option value="EN OFERTA">En Oferta</option>
+                <option value="CIERRE">Cierre</option>
               </select>
             </div>
           </div>
 
           <div className="space-y-2">
             <label className="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold ml-1">Notas</label>
-            <textarea 
+            <textarea
+              value={notas}
+              onChange={(e) => setNotas(e.target.value)}
               placeholder="Observaciones sobre el cliente..." 
               className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm focus:border-[#d4af37] outline-none transition-all placeholder:text-gray-700 text-white resize-none h-24" 
             />
