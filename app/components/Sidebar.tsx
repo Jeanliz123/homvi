@@ -13,8 +13,7 @@ export default function Sidebar() {
   ]
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-[#0a0a0a] border-r border-white/5 flex flex-col z-50">
-      <div className="p-8">
+<aside className="hidden lg:flex fixed left-0 top-0 h-screen w-64 bg-[#0a0a0a] border-r border-white/5 flex-col z-50">      <div className="p-8">
         <div className="text-[#d4af37] text-2xl font-bold tracking-tighter uppercase italic">Homvi</div>
       </div>
 
