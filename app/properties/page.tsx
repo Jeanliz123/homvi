@@ -7,15 +7,16 @@ export default function PropertiesPage() {
   const [filter, setFilter] = useState('Todos')
 
   const allProperties = [
-    { 
-      id: 1, 
-      name: 'Penthouse Bella Vista', 
-      loc: 'Piantini, SD', 
-      price: '$1.2M', 
-      area: '450m²', 
-      type: 'Penthouse',
-      image: 'https://images.unsplash.com/photo-1600607687940-4e2a27690a17?auto=format&fit=crop&q=80&w=800'
-    },
+  // Busca el id: 1 y cambia solo la línea de image:
+{ 
+  id: 1, 
+  name: 'Penthouse Bella Vista', 
+  loc: 'Piantini, SD', 
+  price: '$1.2M', 
+  area: '450m²', 
+  type: 'Penthouse',
+  image: 'https://images.unsplash.com/photo-1567496898905-af4139885fe7?auto=format&fit=crop&q=80&w=800' 
+},
     { 
       id: 2, 
       name: 'Villa Mar Azul', 
