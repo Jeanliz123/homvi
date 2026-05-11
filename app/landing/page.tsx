@@ -16,7 +16,7 @@ export default function Page() {
         </Link>
       </nav>
 
-      <section className="pt-24 pb-12 px-6 text-center max-w-4xl mx-auto">
+      <section className="pt-16 pb-8 px-6 text-center max-w-4xl mx-auto">
         <span className="text-[#d4af37] text-xs uppercase tracking-[0.3em] font-bold mb-4 block">CRM Inmobiliario Premium</span>
         <h1 className="text-5xl md:text-7xl font-light tracking-tight mb-8">
           Tu cartera de clientes, <br />
@@ -35,7 +35,7 @@ export default function Page() {
         </div>
       </section>
 
-      <section className="py-20 px-6 max-w-6xl mx-auto border-y border-white/5 mt-10">
+      <section className="py-10 px-6 max-w-6xl mx-auto border-y border-white/5 mt-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           <div className="text-center">
             <p className="text-4xl font-light mb-2">2,400+</p>
@@ -56,7 +56,7 @@ export default function Page() {
         </div>
       </section>
 
-      <section className="py-24 px-6 max-w-5xl mx-auto">
+      <section className="py-14 px-6 max-w-5xl mx-auto">
         <div className="grid md:grid-cols-3 gap-16">
           <div className="space-y-4">
             <div className="text-[#d4af37] text-3xl font-serif">01</div>
@@ -76,7 +76,7 @@ export default function Page() {
         </div>
       </section>
 
-      <section className="py-24 px-6 text-center bg-[#d4af37]/5 border-t border-[#d4af37]/10">
+      <section className="py-16 px-6 text-center bg-[#d4af37]/5 border-t border-[#d4af37]/10">
         <h2 className="text-4xl font-light mb-4">Empieza a cerrar más. Hoy.</h2>
         <p className="text-gray-400 mb-10 max-w-md mx-auto text-sm">Sin tarjeta de crédito. Configura en 5 minutos.</p>
         <div className="max-w-md mx-auto flex flex-col gap-4">
@@ -91,7 +91,7 @@ export default function Page() {
         </div>
       </section>
 
-      <footer className="py-12 text-center text-gray-600 text-[10px] tracking-[0.3em] uppercase">
+      <footer className="py-8 text-center text-gray-600 text-[10px] tracking-[0.3em] uppercase">
         <p>© 2026 HOMVI. ELEVANDO EL ESTÁNDAR INMOBILIARIO.</p>
       </footer>
     </div>
