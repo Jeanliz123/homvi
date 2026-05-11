@@ -151,8 +151,7 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
           {initiales(cliente.nombre)}
         </div>
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-white">{cliente.nombre}</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{cliente.telefono}{cliente.telefono && cliente.email && ' · '}{cliente.email}</p>
+<h1 className="text-xl font-bold text-white">{cliente.nombre.split(' ').map((n) => n.charAt(0).toUpperCase() + n.slice(1)).join(' ')}</h1>          <p className="text-gray-500 text-sm mt-0.5">{cliente.telefono}{cliente.telefono && cliente.email && ' · '}{cliente.email}</p>
         </div>
         <div className="flex gap-2 flex-wrap justify-end">
           <button onClick={() => { seleccionarMensaje(generarMensajeAuto(cliente)); setTabActivo('auto') }}
