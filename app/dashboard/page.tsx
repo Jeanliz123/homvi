@@ -94,8 +94,7 @@ export default function Dashboard() {
                         <span className={`text-xs px-3 py-1 rounded-full font-medium ${etapaColor[c.etapa] || 'text-gray-400 bg-white/5'}`}>
                           {c.etapa}
                         </span>
-                        <span className="text-sm font-bold text-[#d4af37]">{c.presupuestoMin || '—'}</span>
-                      </div>
+<span className="text-sm font-bold text-[#d4af37]">{c.presupuestoMin ? `$${Number(c.presupuestoMin.replace(/\D/g,'')).toLocaleString()}` : '—'}</span>                      </div>
                     </div>
                   </Link>
                 ))}
