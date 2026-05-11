@@ -7,16 +7,15 @@ export default function PropertiesPage() {
   const [filter, setFilter] = useState('Todos')
 
   const allProperties = [
-  // Busca el id: 1 y cambia solo la línea de image:
-{ 
-  id: 1, 
-  name: 'Penthouse Bella Vista', 
-  loc: 'Piantini, SD', 
-  price: '$1.2M', 
-  area: '450m²', 
-  type: 'Penthouse',
-  image: 'https://images.unsplash.com/photo-1567496898905-af4139885fe7?auto=format&fit=crop&q=80&w=800' 
-},
+    { 
+      id: 1, 
+      name: 'Penthouse Bella Vista', 
+      loc: 'Piantini, SD', 
+      price: '$1.2M', 
+      area: '450m²', 
+      type: 'Penthouse',
+      image: 'https://images.unsplash.com/photo-1567496898905-af4139885fe7?auto=format&fit=crop&q=80&w=800'
+    },
     { 
       id: 2, 
       name: 'Villa Mar Azul', 
@@ -45,28 +44,7 @@ export default function PropertiesPage() {
       image: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&q=80&w=800'
     },
   ]
-{filteredProperties.map(prop => (
-  <div key={prop.id} className="bg-[#0a0a0a] border border-white/5 p-4 rounded-[2.5rem] hover:border-[#d4af37]/30 transition-all group flex flex-col">
-    
-    {/* LA FOTO */}
-    <div className="h-64 w-full mb-6 overflow-hidden rounded-[2rem]">
-      <img 
-        src={prop.image} 
-        alt={prop.name} 
-        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-      />
-    </div>
 
-    {/* EL RESTO DEL CONTENIDO QUE YA TENÍAS... */}
-    <div className="px-2">
-       <div className="flex justify-between items-start mb-4">
-         <h3 className="font-bold uppercase tracking-tighter text-sm">{prop.name}</h3>
-         <span className="text-[#d4af37] font-mono text-sm">{prop.price}</span>
-       </div>
-       {/* ... el resto de tu código ... */}
-    </div>
-  </div>
-))}
   const filteredProperties = allProperties.filter(prop => {
     const matchesSearch = prop.name.toLowerCase().includes(search.toLowerCase()) || 
                           prop.loc.toLowerCase().includes(search.toLowerCase())
@@ -83,7 +61,6 @@ export default function PropertiesPage() {
         </Link>
       </header>
 
-      {/* Controles */}
       <div className="flex flex-col md:flex-row gap-4 mb-10">
         <input 
           type="text"
@@ -106,17 +83,15 @@ export default function PropertiesPage() {
         </div>
       </div>
 
-      {/* Rejilla de Propiedades */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredProperties.map(prop => (
           <div key={prop.id} className="bg-[#0a0a0a] border border-white/5 p-4 rounded-[2.5rem] hover:border-[#d4af37]/30 transition-all group flex flex-col">
-            
-            {/* Contenedor de la Imagen con Zoom */}
             <div className="h-64 w-full mb-6 overflow-hidden rounded-[2rem] relative">
               <img 
                 src={prop.image} 
                 alt={prop.name} 
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                loading="lazy"
               />
               <div className="absolute top-4 left-4 text-[9px] uppercase tracking-widest text-white bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
                 {prop.type}
@@ -128,10 +103,7 @@ export default function PropertiesPage() {
                 <h3 className="font-bold uppercase tracking-tighter text-sm">{prop.name}</h3>
                 <span className="text-[#d4af37] font-mono text-sm">{prop.price}</span>
               </div>
-              
               <p className="text-gray-500 text-[10px] italic mb-6">{prop.loc} • {prop.area}</p>
-
-              {/* Botón Detalles */}
               <Link href={`/properties/${prop.id}`} className="mt-auto">
                 <button className="w-full py-4 rounded-2xl border border-white/10 bg-white/5 text-[9px] uppercase tracking-[0.2em] font-bold hover:bg-white hover:text-black transition-all">
                   Ver Detalles
