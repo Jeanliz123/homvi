@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, use } from 'react'
+import { supabase } from '../../app/lib/supabase'
 
 type Stage = 'LEAD' | 'BUSCANDO' | 'EN OFERTA' | 'CIERRE'
 
@@ -106,36 +107,74 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
   const [nuevaNota, setNuevaNota] = useState('')
 
   useEffect(() => {
-    const guardados = localStorage.getItem('homvi_clientes')
-    if (guardados) {
-      const clientes: Cliente[] = JSON.parse(guardados)
-      const encontrado = clientes.find((c) => c.id === id)
-      if (encontrado) setCliente(encontrado)
+    const cargarCliente = async () => {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (data && !error) {
+        setCliente({
+          id: data.id,
+          nombre: data.nombre,
+          telefono: data.telefono || '',
+          email: data.email || '',
+          etapa: data.etapa as Stage,
+          presupuestoMin: data.presupuesto_min || '',
+          presupuestoMax: data.presupuesto_max || '',
+          tipoPropiedad: data.tipo_propiedad || [],
+          recamaras: data.recamaras || '',
+          plazo: data.plazo || '',
+          financiamiento: data.financiamiento || '',
+          zonas: data.zonas || [],
+          notas: data.notas || '',
+        })
+      }
     }
-    const hist = localStorage.getItem(`homvi_historial_${id}`)
-    if (hist) setHistorial(JSON.parse(hist))
+
+    const cargarHistorial = async () => {
+      const { data } = await supabase
+        .from('historial')
+        .select('*')
+        .eq('cliente_id', id)
+        .order('fecha', { ascending: false })
+
+      if (data) {
+        setHistorial(data.map((h) => ({
+          id: h.id,
+          tipo: h.tipo,
+          texto: h.texto,
+          fecha: h.fecha,
+        })))
+      }
+    }
+
+    cargarCliente()
+    cargarHistorial()
   }, [id])
 
-  const registrarComunicacion = (tipo: Comunicacion['tipo'], texto: string) => {
-    const nueva: Comunicacion = {
+  const registrarComunicacion = async (tipo: Comunicacion['tipo'], texto: string) => {
+    const nueva = {
       id: Date.now().toString(),
+      cliente_id: id,
       tipo,
       texto,
       fecha: new Date().toISOString(),
     }
-    const actualizado = [nueva, ...historial]
-    setHistorial(actualizado)
-    localStorage.setItem(`homvi_historial_${id}`, JSON.stringify(actualizado))
+    await supabase.from('historial').insert(nueva)
+    setHistorial((prev) => [{ id: nueva.id, tipo, texto, fecha: nueva.fecha }, ...prev])
   }
 
-  const cambiarEtapa = (nuevaEtapa: Stage) => {
+  const cambiarEtapa = async (nuevaEtapa: Stage) => {
     if (!cliente) return
-    const guardados = localStorage.getItem('homvi_clientes')
-    if (!guardados) return
-    const clientes: Cliente[] = JSON.parse(guardados)
-    const actualizados = clientes.map((c) => c.id === cliente.id ? { ...c, etapa: nuevaEtapa } : c)
-    localStorage.setItem('homvi_clientes', JSON.stringify(actualizados))
+    await supabase.from('clientes').update({ etapa: nuevaEtapa }).eq('id', id)
     setCliente({ ...cliente, etapa: nuevaEtapa })
+  }
+
+  const eliminarCliente = async () => {
+    await supabase.from('clientes').delete().eq('id', id)
+    router.push('/dashboard')
   }
 
   const seleccionarMensaje = (texto: string) => {
@@ -191,13 +230,7 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
         </button>
         <div className="flex-1" />
         <button
-          onClick={() => {
-            const guardados = localStorage.getItem('homvi_clientes')
-            if (!guardados) return
-            const clientes = JSON.parse(guardados).filter((c: Cliente) => c.id !== id)
-            localStorage.setItem('homvi_clientes', JSON.stringify(clientes))
-            router.push('/dashboard')
-          }}
+          onClick={eliminarCliente}
           className="text-xs uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors font-bold"
         >
           Eliminar cliente
@@ -225,16 +258,16 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
             className="bg-white/5 border border-white/10 text-gray-300 px-4 py-2 rounded-xl text-xs font-bold hover:bg-white/10 transition-all">
             📋 Plantillas
           </button>
-         {cliente.telefono && (
-  <button onClick={() => {
-    const numero = cliente.telefono.replace(/\D/g, '')
-    registrarComunicacion('whatsapp', `WhatsApp abierto con ${cliente.nombre}`)
-    window.open(`https://wa.me/${numero}`, '_blank')
-  }}
-    className="bg-green-400/10 border border-green-400/30 text-green-400 px-4 py-2 rounded-xl text-xs font-bold hover:bg-green-400/20 transition-all">
-    WhatsApp →
-  </button>
-)}
+          {cliente.telefono && (
+            <button onClick={() => {
+              const numero = cliente.telefono.replace(/\D/g, '')
+              registrarComunicacion('whatsapp', `WhatsApp abierto con ${cliente.nombre}`)
+              window.open(`https://wa.me/${numero}`, '_blank')
+            }}
+              className="bg-green-400/10 border border-green-400/30 text-green-400 px-4 py-2 rounded-xl text-xs font-bold hover:bg-green-400/20 transition-all">
+              WhatsApp →
+            </button>
+          )}
           {cliente.email && (
             <button onClick={abrirEmail}
               className="bg-blue-400/10 border border-blue-400/30 text-blue-400 px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-400/20 transition-all">
@@ -312,7 +345,6 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
 
       {/* Contenido principal */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-0 mt-4">
-        {/* Perfil de búsqueda */}
         <div className="p-6 border-r border-white/5">
           <h3 className="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold mb-4">Perfil de Búsqueda</h3>
           <div className="bg-[#0a0a0a] rounded-2xl border border-white/5 overflow-hidden mb-4">
@@ -369,7 +401,6 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
           )}
         </div>
 
-        {/* Etapa y acciones */}
         <div className="p-6">
           <h3 className="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold mb-4">Etapa del Pipeline</h3>
           <div className="flex flex-col gap-2 mb-6">
@@ -397,11 +428,9 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
-      {/* Historial de comunicaciones */}
+      {/* Historial */}
       <div className="p-6 border-t border-white/5 mt-4">
         <h3 className="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold mb-6">Historial de Comunicaciones</h3>
-
-        {/* Añadir nota manual */}
         <div className="flex gap-3 mb-6">
           <input
             type="text"
@@ -416,12 +445,8 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
             + Nota
           </button>
         </div>
-
-        {/* Lista de historial */}
         {historial.length === 0 ? (
-          <div className="text-center py-10 text-gray-600 text-sm">
-            Sin comunicaciones registradas aún.
-          </div>
+          <div className="text-center py-10 text-gray-600 text-sm">Sin comunicaciones registradas aún.</div>
         ) : (
           <div className="space-y-3">
             {historial.map((h) => (
@@ -438,8 +463,6 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
           </div>
         )}
       </div>
-
     </div>
   )
 }
-  
