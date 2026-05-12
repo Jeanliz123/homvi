@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { supabase } from '../app/lib/supabase'
 
 interface Cliente {
   id: string
@@ -14,8 +15,23 @@ export default function Dashboard() {
   const [clientes, setClientes] = useState<Cliente[]>([])
 
   useEffect(() => {
-    const guardados = localStorage.getItem('homvi_clientes')
-    if (guardados) setClientes(JSON.parse(guardados))
+    const cargar = async () => {
+      const { data } = await supabase
+        .from('clientes')
+        .select('id, nombre, etapa, tipo_propiedad, presupuesto_min')
+        .order('created_at', { ascending: false })
+
+      if (data) {
+        setClientes(data.map((c) => ({
+          id: c.id,
+          nombre: c.nombre,
+          etapa: c.etapa,
+          tipoPropiedad: c.tipo_propiedad || [],
+          presupuestoMin: c.presupuesto_min || '',
+        })))
+      }
+    }
+    cargar()
   }, [])
 
   const etapaColor: Record<string, string> = {
@@ -67,7 +83,6 @@ export default function Dashboard() {
 
         {/* Pipeline + Citas */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-          {/* Pipeline */}
           <div className="lg:col-span-2 bg-[#0a0a0a] rounded-[2rem] border border-white/5 p-8">
             <h3 className="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold mb-6">Pipeline de Clientes</h3>
             {clientes.length === 0 ? (
@@ -87,14 +102,20 @@ export default function Dashboard() {
                           {c.nombre.charAt(0).toUpperCase()}
                         </div>
                         <div>
-<p className="text-sm font-medium group-hover:text-[#d4af37] transition-colors">{c.nombre.charAt(0).toUpperCase() + c.nombre.slice(1)}</p>                          <p className="text-gray-500 text-xs">{c.tipoPropiedad?.[0] || '—'}</p>
+                          <p className="text-sm font-medium group-hover:text-[#d4af37] transition-colors">
+                            {c.nombre.split(' ').map((n) => n.charAt(0).toUpperCase() + n.slice(1)).join(' ')}
+                          </p>
+                          <p className="text-gray-500 text-xs">{c.tipoPropiedad?.[0] || '—'}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
                         <span className={`text-xs px-3 py-1 rounded-full font-medium ${etapaColor[c.etapa] || 'text-gray-400 bg-white/5'}`}>
                           {c.etapa}
                         </span>
-<span className="text-sm font-bold text-[#d4af37]">{c.presupuestoMin ? `$${Number(c.presupuestoMin.replace(/\D/g,'')).toLocaleString()}` : '—'}</span>                      </div>
+                        <span className="text-sm font-bold text-[#d4af37]">
+                          {c.presupuestoMin ? `$${Number(c.presupuestoMin.replace(/\D/g,'')).toLocaleString()}` : '—'}
+                        </span>
+                      </div>
                     </div>
                   </Link>
                 ))}
@@ -102,7 +123,6 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Citas de hoy */}
           <div className="bg-[#0a0a0a] rounded-[2rem] border border-white/5 p-8">
             <h3 className="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold mb-6">Agenda de Hoy</h3>
             <div className="space-y-5">
@@ -122,7 +142,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Acciones Rápidas */}
         <section>
           <h3 className="text-gray-500 text-xs uppercase tracking-[0.2em] mb-6 font-bold">Acciones Rápidas</h3>
           <div className="flex flex-wrap gap-4">
