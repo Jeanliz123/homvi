@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { supabase } from '../app/lib/supabase'
 
 interface Cliente {
   id: string
@@ -33,8 +34,25 @@ export default function ClientesPage() {
   const [filtro, setFiltro] = useState('Todos')
 
   useEffect(() => {
-    const guardados = localStorage.getItem('homvi_clientes')
-    if (guardados) setClientes(JSON.parse(guardados))
+    const cargar = async () => {
+      const { data } = await supabase
+        .from('clientes')
+        .select('id, nombre, telefono, email, etapa, presupuesto_min, tipo_propiedad')
+        .order('created_at', { ascending: false })
+
+      if (data) {
+        setClientes(data.map((c) => ({
+          id: c.id,
+          nombre: c.nombre,
+          telefono: c.telefono || '',
+          email: c.email || '',
+          etapa: c.etapa,
+          presupuestoMin: c.presupuesto_min || '',
+          tipoPropiedad: c.tipo_propiedad || [],
+        })))
+      }
+    }
+    cargar()
   }, [])
 
   const filtrados = clientes.filter((c) => {
