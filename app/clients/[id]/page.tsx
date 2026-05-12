@@ -29,6 +29,16 @@ interface Comunicacion {
   fecha: string
 }
 
+interface Propiedad {
+  id: string
+  nombre: string
+  ubicacion: string
+  precio: string
+  area: string
+  tipo: string
+  imagen: string
+}
+
 const etapaColor: Record<Stage, string> = {
   LEAD: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
   BUSCANDO: 'text-[#d4af37] bg-[#d4af37]/10 border-[#d4af37]/30',
@@ -106,6 +116,13 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
   const [historial, setHistorial] = useState<Comunicacion[]>([])
   const [nuevaNota, setNuevaNota] = useState('')
 
+  // Propiedades
+  const [propiedadesAsignadas, setPropiedadesAsignadas] = useState<Propiedad[]>([])
+  const [todasPropiedades, setTodasPropiedades] = useState<Propiedad[]>([])
+  const [modalPropiedades, setModalPropiedades] = useState(false)
+  const [searchProp, setSearchProp] = useState('')
+  const [asignando, setAsignando] = useState<string | null>(null)
+
   useEffect(() => {
     const cargarCliente = async () => {
       const { data, error } = await supabase
@@ -150,9 +167,67 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
       }
     }
 
+    const cargarPropiedadesAsignadas = async () => {
+      const { data } = await supabase
+        .from('cliente_propiedades')
+        .select('propiedad_id')
+        .eq('cliente_id', id)
+
+      if (data && data.length > 0) {
+        const ids = data.map((r) => r.propiedad_id)
+        const { data: props } = await supabase
+          .from('propiedades')
+          .select('*')
+          .in('id', ids)
+        if (props) setPropiedadesAsignadas(props.map(mapProp))
+      }
+    }
+
+    const cargarTodasPropiedades = async () => {
+      const { data } = await supabase.from('propiedades').select('*').order('nombre')
+      if (data) setTodasPropiedades(data.map(mapProp))
+    }
+
     cargarCliente()
     cargarHistorial()
+    cargarPropiedadesAsignadas()
+    cargarTodasPropiedades()
   }, [id])
+
+  function mapProp(p: Record<string, string>): Propiedad {
+    return {
+      id: p.id,
+      nombre: p.nombre,
+      ubicacion: p.ubicacion,
+      precio: p.precio,
+      area: p.area,
+      tipo: p.tipo,
+      imagen: p.imagen,
+    }
+  }
+
+  const asignarPropiedad = async (propId: string) => {
+    setAsignando(propId)
+    const { error } = await supabase
+      .from('cliente_propiedades')
+      .insert({ cliente_id: id, propiedad_id: propId })
+
+    if (!error) {
+      const prop = todasPropiedades.find((p) => p.id === propId)
+      if (prop) setPropiedadesAsignadas((prev) => [...prev, prop])
+      await registrarComunicacion('nota', `Propiedad asignada: ${todasPropiedades.find(p => p.id === propId)?.nombre}`)
+    }
+    setAsignando(null)
+  }
+
+  const desasignarPropiedad = async (propId: string) => {
+    await supabase
+      .from('cliente_propiedades')
+      .delete()
+      .eq('cliente_id', id)
+      .eq('propiedad_id', propId)
+    setPropiedadesAsignadas((prev) => prev.filter((p) => p.id !== propId))
+  }
 
   const registrarComunicacion = async (tipo: Comunicacion['tipo'], texto: string) => {
     const nueva = {
@@ -214,6 +289,13 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
     setNuevaNota('')
   }
 
+  const propiedadesAsignadasIds = new Set(propiedadesAsignadas.map((p) => p.id))
+  const propiedadesFiltradas = todasPropiedades.filter(
+    (p) => !propiedadesAsignadasIds.has(p.id) &&
+      (p.nombre.toLowerCase().includes(searchProp.toLowerCase()) ||
+        p.ubicacion.toLowerCase().includes(searchProp.toLowerCase()))
+  )
+
   if (!cliente) return (
     <div className="min-h-screen bg-[#050505] flex items-center justify-center text-gray-500 font-sans">
       Cargando cliente...
@@ -229,10 +311,7 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
           ← Dashboard
         </button>
         <div className="flex-1" />
-        <button
-          onClick={eliminarCliente}
-          className="text-xs uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors font-bold"
-        >
+        <button onClick={eliminarCliente} className="text-xs uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors font-bold">
           Eliminar cliente
         </button>
         <span className={`text-xs px-3 py-1 rounded-full font-bold border uppercase tracking-widest ${etapaColor[cliente.etapa]}`}>
@@ -416,9 +495,9 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
 
           <h3 className="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold mb-4">Acciones Rápidas</h3>
           <div className="flex flex-col gap-2">
-            <button onClick={() => router.push('/properties')}
-              className="px-4 py-3 rounded-2xl bg-[#0a0a0a] border border-white/5 text-sm text-gray-300 text-left hover:border-[#d4af37]/30 hover:text-white transition-all">
-              Ver propiedades →
+            <button onClick={() => setModalPropiedades(true)}
+              className="px-4 py-3 rounded-2xl bg-[#d4af37]/5 border border-[#d4af37]/20 text-sm text-[#d4af37] text-left hover:bg-[#d4af37]/10 transition-all font-bold">
+              🏠 Asignar propiedad
             </button>
             <button onClick={() => router.push('/today')}
               className="px-4 py-3 rounded-2xl bg-[#0a0a0a] border border-white/5 text-sm text-gray-300 text-left hover:border-[#d4af37]/30 hover:text-white transition-all">
@@ -427,6 +506,123 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
           </div>
         </div>
       </div>
+
+      {/* Propiedades asignadas */}
+      <div className="px-6 pb-2 mt-2">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold">
+            Propiedades de Interés
+            {propiedadesAsignadas.length > 0 && (
+              <span className="ml-2 bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/30 px-2 py-0.5 rounded-full text-xs">
+                {propiedadesAsignadas.length}
+              </span>
+            )}
+          </h3>
+          <button onClick={() => setModalPropiedades(true)}
+            className="text-xs text-[#d4af37] hover:text-[#d4af37]/80 transition-colors font-bold">
+            + Agregar
+          </button>
+        </div>
+
+        {propiedadesAsignadas.length === 0 ? (
+          <div className="bg-[#0a0a0a] border border-white/5 border-dashed rounded-2xl py-8 text-center">
+            <p className="text-gray-600 text-sm">Sin propiedades asignadas</p>
+            <button onClick={() => setModalPropiedades(true)}
+              className="mt-3 text-xs text-[#d4af37] hover:underline">
+              Asignar una propiedad →
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {propiedadesAsignadas.map((prop) => (
+              <div key={prop.id} className="bg-[#0a0a0a] border border-white/5 rounded-2xl overflow-hidden hover:border-[#d4af37]/20 transition-all group">
+                <div className="h-36 overflow-hidden relative">
+                  <img src={prop.imagen} alt={prop.nombre} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <div className="absolute top-2 left-2 text-[9px] uppercase tracking-widest text-white bg-black/50 backdrop-blur-md px-2 py-1 rounded-full">
+                    {prop.tipo}
+                  </div>
+                  <button
+                    onClick={() => desasignarPropiedad(prop.id)}
+                    className="absolute top-2 right-2 w-6 h-6 bg-black/60 hover:bg-red-500/80 rounded-full flex items-center justify-center text-white text-xs transition-all opacity-0 group-hover:opacity-100">
+                    ✕
+                  </button>
+                </div>
+                <div className="p-3">
+                  <p className="text-sm font-bold text-white truncate">{prop.nombre}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{prop.ubicacion}</p>
+                  <p className="text-xs text-[#d4af37] font-bold mt-1">{prop.precio} · {prop.area}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Modal asignar propiedad */}
+      {modalPropiedades && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0a0a0a] border border-white/10 rounded-[2rem] w-full max-w-2xl max-h-[80vh] flex flex-col">
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-white">Asignar Propiedad</h2>
+                <p className="text-xs text-gray-500 mt-1">Selecciona propiedades de interés para {cliente.nombre.split(' ')[0]}</p>
+              </div>
+              <button onClick={() => { setModalPropiedades(false); setSearchProp('') }}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all">
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4 border-b border-white/5">
+              <input
+                type="text"
+                placeholder="Buscar por nombre o ubicación..."
+                value={searchProp}
+                onChange={(e) => setSearchProp(e.target.value)}
+                className="w-full bg-[#050505] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none focus:border-[#d4af37]/50 transition-all"
+                autoFocus
+              />
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-4">
+              {propiedadesFiltradas.length === 0 ? (
+                <div className="text-center py-10 text-gray-600 text-sm">
+                  {todasPropiedades.length === propiedadesAsignadas.length
+                    ? 'Todas las propiedades ya están asignadas'
+                    : 'No se encontraron propiedades'}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3">
+                  {propiedadesFiltradas.map((prop) => (
+                    <div key={prop.id} className="flex items-center gap-4 bg-[#050505] border border-white/5 rounded-2xl p-3 hover:border-[#d4af37]/20 transition-all">
+                      <img src={prop.imagen} alt={prop.nombre} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-white truncate">{prop.nombre}</p>
+                        <p className="text-xs text-gray-500">{prop.ubicacion} · {prop.tipo}</p>
+                        <p className="text-xs text-[#d4af37] font-bold mt-0.5">{prop.precio} · {prop.area}</p>
+                      </div>
+                      <button
+                        onClick={() => asignarPropiedad(prop.id)}
+                        disabled={asignando === prop.id}
+                        className="flex-shrink-0 bg-[#d4af37]/10 border border-[#d4af37]/30 text-[#d4af37] px-4 py-2 rounded-xl text-xs font-bold hover:bg-[#d4af37] hover:text-black transition-all disabled:opacity-50">
+                        {asignando === prop.id ? '...' : '+ Asignar'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {propiedadesAsignadas.length > 0 && (
+              <div className="p-4 border-t border-white/5">
+                <p className="text-xs text-gray-600 text-center">
+                  {propiedadesAsignadas.length} propiedad{propiedadesAsignadas.length !== 1 ? 'es' : ''} asignada{propiedadesAsignadas.length !== 1 ? 's' : ''} a {cliente.nombre.split(' ')[0]}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Historial */}
       <div className="p-6 border-t border-white/5 mt-4">
