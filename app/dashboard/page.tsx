@@ -11,8 +11,18 @@ interface Cliente {
   presupuestoMin: string
 }
 
+interface Recordatorio {
+  id: string
+  cliente_id: string
+  texto: string
+  fecha: string
+  completado: boolean
+  clienteNombre?: string
+}
+
 export default function Dashboard() {
   const [clientes, setClientes] = useState<Cliente[]>([])
+  const [recordatorios, setRecordatorios] = useState<Recordatorio[]>([])
 
   useEffect(() => {
     const cargar = async () => {
@@ -31,8 +41,38 @@ export default function Dashboard() {
         })))
       }
     }
+
+    const cargarRecordatorios = async () => {
+      const hoy = new Date().toISOString().split('T')[0]
+      const en7dias = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+      const { data } = await supabase
+        .from('recordatorios')
+        .select('*, clientes(nombre)')
+        .eq('completado', false)
+        .lte('fecha', en7dias)
+        .order('fecha', { ascending: true })
+
+      if (data) {
+        setRecordatorios(data.map((r) => ({
+          id: r.id,
+          cliente_id: r.cliente_id,
+          texto: r.texto,
+          fecha: r.fecha,
+          completado: r.completado,
+          clienteNombre: r.clientes?.nombre || '',
+        })))
+      }
+    }
+
     cargar()
+    cargarRecordatorios()
   }, [])
+
+  const completarRecordatorio = async (id: string) => {
+    await supabase.from('recordatorios').update({ completado: true }).eq('id', id)
+    setRecordatorios((prev) => prev.filter((r) => r.id !== id))
+  }
 
   const etapaColor: Record<string, string> = {
     'LEAD': 'text-gray-400 bg-white/5',
@@ -41,11 +81,20 @@ export default function Dashboard() {
     'CIERRE': 'text-green-400 bg-green-400/10',
   }
 
-  const citas = [
-    { hora: '10:00 AM', cliente: 'María González', tipo: 'Firma de contrato' },
-    { hora: '2:00 PM', cliente: 'Carlos Reyes', tipo: 'Segunda visita' },
-    { hora: '4:30 PM', cliente: 'Pedro Núñez', tipo: 'Llamada de seguimiento' },
-  ]
+  function formatFechaRecordatorio(fecha: string) {
+    const hoy = new Date().toISOString().split('T')[0]
+    const manana = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+    if (fecha === hoy) return { label: 'Hoy', color: 'text-red-400' }
+    if (fecha === manana) return { label: 'Mañana', color: 'text-[#d4af37]' }
+    const d = new Date(fecha + 'T12:00:00')
+    return {
+      label: d.toLocaleDateString('es-DO', { day: 'numeric', month: 'short' }),
+      color: 'text-gray-400'
+    }
+  }
+
+  const recordatoriosHoy = recordatorios.filter(r => r.fecha === new Date().toISOString().split('T')[0])
+  const recordatoriosProximos = recordatorios.filter(r => r.fecha !== new Date().toISOString().split('T')[0])
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans">
@@ -81,7 +130,45 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Pipeline + Citas */}
+        {/* Recordatorios */}
+        {recordatorios.length > 0 && (
+          <div className="mb-10">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold">
+                Recordatorios Pendientes
+                <span className="ml-2 bg-red-400/10 text-red-400 border border-red-400/30 px-2 py-0.5 rounded-full text-xs">
+                  {recordatorios.length}
+                </span>
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {recordatorios.map((r) => {
+                const { label, color } = formatFechaRecordatorio(r.fecha)
+                return (
+                  <div key={r.id} className="bg-[#0a0a0a] border border-white/5 rounded-2xl p-4 flex items-start gap-3 hover:border-[#d4af37]/20 transition-all group">
+                    <button
+                      onClick={() => completarRecordatorio(r.id)}
+                      className="w-5 h-5 rounded-full border border-white/20 flex-shrink-0 mt-0.5 hover:border-green-400 hover:bg-green-400/10 transition-all flex items-center justify-center group-hover:border-[#d4af37]/50"
+                      title="Marcar como completado"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-white leading-snug">{r.texto}</p>
+                      {r.clienteNombre && (
+                        <Link href={`/clients/${r.cliente_id}`} className="text-xs text-[#d4af37] hover:underline mt-0.5 block truncate">
+                          {r.clienteNombre.split(' ').map((n: string) => n.charAt(0).toUpperCase() + n.slice(1)).join(' ')}
+                        </Link>
+                      )}
+                    </div>
+                    <span className={`text-xs font-bold flex-shrink-0 ${color}`}>{label}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Pipeline + Agenda */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
           <div className="lg:col-span-2 bg-[#0a0a0a] rounded-[2rem] border border-white/5 p-8">
             <h3 className="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold mb-6">Pipeline de Clientes</h3>
@@ -126,7 +213,11 @@ export default function Dashboard() {
           <div className="bg-[#0a0a0a] rounded-[2rem] border border-white/5 p-8">
             <h3 className="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold mb-6">Agenda de Hoy</h3>
             <div className="space-y-5">
-              {citas.map((c, i) => (
+              {[
+                { hora: '10:00 AM', cliente: 'María González', tipo: 'Firma de contrato' },
+                { hora: '2:00 PM', cliente: 'Carlos Reyes', tipo: 'Segunda visita' },
+                { hora: '4:30 PM', cliente: 'Pedro Núñez', tipo: 'Llamada de seguimiento' },
+              ].map((c, i) => (
                 <div key={i} className="flex gap-4">
                   <div className="text-[#d4af37] text-xs font-bold w-16 pt-0.5">{c.hora}</div>
                   <div className="border-l border-white/10 pl-4">

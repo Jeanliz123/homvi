@@ -39,6 +39,13 @@ interface Propiedad {
   imagen: string
 }
 
+interface Recordatorio {
+  id: string
+  texto: string
+  fecha: string
+  completado: boolean
+}
+
 const etapaColor: Record<Stage, string> = {
   LEAD: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
   BUSCANDO: 'text-[#d4af37] bg-[#d4af37]/10 border-[#d4af37]/30',
@@ -105,6 +112,13 @@ function formatFecha(iso: string) {
   return d.toLocaleDateString('es-DO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
+const diasRapidos = [
+  { label: 'Mañana', dias: 1 },
+  { label: '3 días', dias: 3 },
+  { label: '1 semana', dias: 7 },
+  { label: '2 semanas', dias: 14 },
+]
+
 export default function ClienteDetalle({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
   const { id } = use(params)
@@ -122,6 +136,13 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
   const [modalPropiedades, setModalPropiedades] = useState(false)
   const [searchProp, setSearchProp] = useState('')
   const [asignando, setAsignando] = useState<string | null>(null)
+
+  // Recordatorios
+  const [recordatorios, setRecordatorios] = useState<Recordatorio[]>([])
+  const [modalRecordatorio, setModalRecordatorio] = useState(false)
+  const [textoRecordatorio, setTextoRecordatorio] = useState('')
+  const [fechaRecordatorio, setFechaRecordatorio] = useState('')
+  const [guardandoRecordatorio, setGuardandoRecordatorio] = useState(false)
 
   useEffect(() => {
     const cargarCliente = async () => {
@@ -188,10 +209,21 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
       if (data) setTodasPropiedades(data.map(mapProp))
     }
 
+    const cargarRecordatorios = async () => {
+      const { data } = await supabase
+        .from('recordatorios')
+        .select('*')
+        .eq('cliente_id', id)
+        .eq('completado', false)
+        .order('fecha', { ascending: true })
+      if (data) setRecordatorios(data)
+    }
+
     cargarCliente()
     cargarHistorial()
     cargarPropiedadesAsignadas()
     cargarTodasPropiedades()
+    cargarRecordatorios()
   }, [id])
 
   function mapProp(p: Record<string, string>): Propiedad {
@@ -227,6 +259,34 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
       .eq('cliente_id', id)
       .eq('propiedad_id', propId)
     setPropiedadesAsignadas((prev) => prev.filter((p) => p.id !== propId))
+  }
+
+  const guardarRecordatorio = async () => {
+    if (!textoRecordatorio.trim() || !fechaRecordatorio) return
+    setGuardandoRecordatorio(true)
+    const { data, error } = await supabase
+      .from('recordatorios')
+      .insert({ cliente_id: id, texto: textoRecordatorio.trim(), fecha: fechaRecordatorio })
+      .select()
+      .single()
+
+    if (!error && data) {
+      setRecordatorios((prev) => [...prev, data])
+      setTextoRecordatorio('')
+      setFechaRecordatorio('')
+      setModalRecordatorio(false)
+    }
+    setGuardandoRecordatorio(false)
+  }
+
+  const completarRecordatorio = async (recId: string) => {
+    await supabase.from('recordatorios').update({ completado: true }).eq('id', recId)
+    setRecordatorios((prev) => prev.filter((r) => r.id !== recId))
+  }
+
+  const setDiaRapido = (dias: number) => {
+    const fecha = new Date(Date.now() + dias * 86400000).toISOString().split('T')[0]
+    setFechaRecordatorio(fecha)
   }
 
   const registrarComunicacion = async (tipo: Comunicacion['tipo'], texto: string) => {
@@ -499,11 +559,43 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
               className="px-4 py-3 rounded-2xl bg-[#d4af37]/5 border border-[#d4af37]/20 text-sm text-[#d4af37] text-left hover:bg-[#d4af37]/10 transition-all font-bold">
               🏠 Asignar propiedad
             </button>
+            <button onClick={() => setModalRecordatorio(true)}
+              className="px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-sm text-gray-300 text-left hover:border-[#d4af37]/30 hover:text-white transition-all">
+              🔔 Crear recordatorio
+            </button>
             <button onClick={() => router.push('/today')}
               className="px-4 py-3 rounded-2xl bg-[#0a0a0a] border border-white/5 text-sm text-gray-300 text-left hover:border-[#d4af37]/30 hover:text-white transition-all">
               Agendar cita →
             </button>
           </div>
+
+          {/* Recordatorios del cliente */}
+          {recordatorios.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold mb-3">
+                Recordatorios
+                <span className="ml-2 bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/30 px-2 py-0.5 rounded-full text-xs">
+                  {recordatorios.length}
+                </span>
+              </h3>
+              <div className="flex flex-col gap-2">
+                {recordatorios.map((r) => (
+                  <div key={r.id} className="flex items-start gap-3 bg-[#0a0a0a] border border-white/5 rounded-2xl px-4 py-3">
+                    <button
+                      onClick={() => completarRecordatorio(r.id)}
+                      className="w-4 h-4 rounded-full border border-white/20 flex-shrink-0 mt-0.5 hover:border-green-400 hover:bg-green-400/10 transition-all"
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-300">{r.texto}</p>
+                      <p className="text-xs text-[#d4af37] mt-0.5">
+                        {new Date(r.fecha + 'T12:00:00').toLocaleDateString('es-DO', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -518,8 +610,7 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
               </span>
             )}
           </h3>
-          <button onClick={() => setModalPropiedades(true)}
-            className="text-xs text-[#d4af37] hover:text-[#d4af37]/80 transition-colors font-bold">
+          <button onClick={() => setModalPropiedades(true)} className="text-xs text-[#d4af37] hover:text-[#d4af37]/80 transition-colors font-bold">
             + Agregar
           </button>
         </div>
@@ -527,8 +618,7 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
         {propiedadesAsignadas.length === 0 ? (
           <div className="bg-[#0a0a0a] border border-white/5 border-dashed rounded-2xl py-8 text-center">
             <p className="text-gray-600 text-sm">Sin propiedades asignadas</p>
-            <button onClick={() => setModalPropiedades(true)}
-              className="mt-3 text-xs text-[#d4af37] hover:underline">
+            <button onClick={() => setModalPropiedades(true)} className="mt-3 text-xs text-[#d4af37] hover:underline">
               Asignar una propiedad →
             </button>
           </div>
@@ -541,8 +631,7 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
                   <div className="absolute top-2 left-2 text-[9px] uppercase tracking-widest text-white bg-black/50 backdrop-blur-md px-2 py-1 rounded-full">
                     {prop.tipo}
                   </div>
-                  <button
-                    onClick={() => desasignarPropiedad(prop.id)}
+                  <button onClick={() => desasignarPropiedad(prop.id)}
                     className="absolute top-2 right-2 w-6 h-6 bg-black/60 hover:bg-red-500/80 rounded-full flex items-center justify-center text-white text-xs transition-all opacity-0 group-hover:opacity-100">
                     ✕
                   </button>
@@ -557,6 +646,63 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
           </div>
         )}
       </div>
+
+      {/* Modal recordatorio */}
+      {modalRecordatorio && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0a0a0a] border border-white/10 rounded-[2rem] w-full max-w-md">
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-white">Nuevo Recordatorio</h2>
+                <p className="text-xs text-gray-500 mt-1">Para {cliente.nombre.split(' ')[0]}</p>
+              </div>
+              <button onClick={() => setModalRecordatorio(false)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all">
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 flex flex-col gap-4">
+              <div>
+                <label className="text-xs uppercase tracking-widest text-gray-500 font-bold mb-2 block">¿Qué hacer?</label>
+                <input
+                  type="text"
+                  value={textoRecordatorio}
+                  onChange={(e) => setTextoRecordatorio(e.target.value)}
+                  placeholder="ej: Llamar para hacer seguimiento de la oferta"
+                  className="w-full bg-[#050505] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none focus:border-[#d4af37]/50 transition-all"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="text-xs uppercase tracking-widest text-gray-500 font-bold mb-2 block">¿Cuándo?</label>
+                <div className="flex gap-2 mb-3 flex-wrap">
+                  {diasRapidos.map((d) => (
+                    <button key={d.dias} onClick={() => setDiaRapido(d.dias)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold border border-white/10 text-gray-400 hover:border-[#d4af37]/30 hover:text-[#d4af37] transition-all">
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="date"
+                  value={fechaRecordatorio}
+                  onChange={(e) => setFechaRecordatorio(e.target.value)}
+                  className="w-full bg-[#050505] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-[#d4af37]/50 transition-all"
+                />
+              </div>
+
+              <button
+                onClick={guardarRecordatorio}
+                disabled={!textoRecordatorio.trim() || !fechaRecordatorio || guardandoRecordatorio}
+                className="w-full py-3 rounded-2xl bg-[#d4af37] text-black text-xs font-bold uppercase tracking-widest hover:bg-[#d4af37]/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed mt-2">
+                {guardandoRecordatorio ? 'Guardando...' : 'Guardar Recordatorio'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal asignar propiedad */}
       {modalPropiedades && (
