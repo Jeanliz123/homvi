@@ -691,3 +691,4 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
     </div>
   )
 }
+
