@@ -555,6 +555,19 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
         <div className="flex-1">
           <h1 className="text-xl font-bold text-white">{cliente.nombre.split(' ').map((n) => n.charAt(0).toUpperCase() + n.slice(1)).join(' ')}</h1>
           <p className="text-gray-300 text-sm mt-0.5">{cliente.telefono}{cliente.telefono && cliente.email && ' · '}{cliente.email}</p>
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {(cliente.tags || []).map((tag: string) => (
+              <span key={tag} className="flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full font-bold border border-white/10 bg-white/5 text-gray-300">
+                {tag}
+                <button onClick={async () => {
+                  const nuevos = (cliente.tags || []).filter((t: string) => t !== tag)
+                  await supabase.from('clientes').update({ tags: nuevos }).eq('id', id)
+                  setCliente({ ...cliente, tags: nuevos })
+                }} className="ml-0.5 text-gray-500 hover:text-red-400 transition-colors text-xs">×</button>
+              </span>
+            ))}
+            <TagSelector clienteId={id} tags={cliente.tags || []} onUpdate={(nuevos) => setCliente({ ...cliente, tags: nuevos })} />
+          </div>
         </div>
         <div className="flex gap-2 flex-wrap justify-end">
           <button onClick={() => { seleccionarMensaje(generarMensajeAuto(cliente)); setTabActivo('auto') }}
