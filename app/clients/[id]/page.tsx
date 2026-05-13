@@ -268,7 +268,7 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
         .single()
 
       if (data && !error) {
-        setTags(data.tags || [])
+        // tags cargados
         setCliente({
           id: data.id,
           nombre: data.nombre,
