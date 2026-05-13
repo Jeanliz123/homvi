@@ -531,12 +531,9 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
         </span>
       </div>
 
-      {/* Resumen AI */}
-      <ResumenAI cliente={cliente} comunicaciones={comunicaciones} propiedades={propiedadesAsignadas} />
-
 
       {/* Tags */}
-      <div className="mx-6 mt-3 flex flex-wrap gap-2 items-center">
+      <div className="px-6 pt-3 flex flex-wrap gap-2 items-center">
         {(cliente.tags || []).map((tag: string) => (
           <span key={tag} className="flex items-center gap-1 text-[11px] px-3 py-1 rounded-full font-bold border border-white/10 bg-white/5 text-gray-300">
             {tag}
@@ -549,6 +546,9 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
         ))}
         <TagSelector clienteId={id} tags={cliente.tags || []} onUpdate={(nuevos) => setCliente({ ...cliente, tags: nuevos })} />
       </div>
+
+      {/* Resumen AI */}
+      <ResumenAI cliente={cliente} comunicaciones={comunicaciones} propiedades={propiedadesAsignadas} />
 
       {/* Perfil */}
       <div className="p-6 border-b border-white/5 flex items-center gap-4">
