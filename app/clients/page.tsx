@@ -1,6 +1,6 @@
 'use client'
 import React from 'react';
-import { UserPlus, Upload, Search } from 'lucide-react';
+import { UserPlus, Upload } from 'lucide-react';
 
 export default function ClientsPage() {
   const clients = [
@@ -13,46 +13,39 @@ export default function ClientsPage() {
 
   return (
     <div className="p-8 ml-64 bg-black min-h-screen text-white">
-      <div className="flex justify-between items-center mb-8 bg-zinc-900/50 p-8 rounded-3xl border border-zinc-800">
-        <div>
-          <h1 className="text-5xl font-black italic text-amber-500 tracking-tighter">MIS CLIENTES</h1>
-          <p className="text-zinc-500 text-xs mt-2 uppercase tracking-[0.2em]">Base de datos: {clients.length} activos</p>
-        </div>
+      {/* SECCIÓN DE BOTONES SUPERIOR */}
+      <div className="flex justify-between items-center mb-10">
+        <h1 className="text-4xl font-black italic text-amber-500">MIS CLIENTES</h1>
+        
         <div className="flex gap-4">
           <button 
-            onClick={() => alert('Importador Excel Activado')}
-            className="flex items-center gap-2 bg-white text-black px-6 py-3 rounded-xl font-black text-xs uppercase hover:bg-amber-500 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+            onClick={() => alert('Importador Excel')}
+            className="flex items-center gap-2 bg-white text-black px-6 py-3 rounded-xl font-black text-xs uppercase hover:bg-amber-500 transition-all"
           >
             <Upload className="w-4 h-4" />
-            IMPORTAR EXCEL
+            Importar Excel
           </button>
-          <button className="bg-amber-500 text-black px-6 py-3 rounded-xl font-black text-xs uppercase hover:bg-white transition-all shadow-[0_0_20px_rgba(245,158,11,0.3)]">
+          
+          <button className="bg-amber-500 text-black px-6 py-3 rounded-xl font-black text-xs uppercase hover:bg-white transition-all">
             <UserPlus className="w-4 h-4" />
-            Nuevo Registro
+            + Nuevo Cliente
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {clients.map((client) => (
-          <div key={client.id} className="bg-zinc-900/30 border border-zinc-800/50 p-6 rounded-2xl hover:border-amber-500 transition-all">
-            <div className="flex justify-between items-start mb-6">
-              <div className="flex gap-4 items-center">
-                <div className="w-12 h-12 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-amber-500 font-bold text-xl">
-                  {client.initial}
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg leading-tight">{client.name}</h3>
-                  <p className="text-zinc-600 text-[10px] uppercase font-mono">{client.email}</p>
-                </div>
+          <div key={client.id} className="bg-zinc-900/40 border border-zinc-800 p-6 rounded-2xl">
+            <div className="flex justify-between items-start mb-6 font-bold text-lg">
+              <div className="flex gap-3 items-center">
+                <div className="w-10 h-10 rounded-full bg-amber-500 text-black flex items-center justify-center">{client.initial}</div>
+                <span>{client.name}</span>
               </div>
-              <span className="text-[10px] font-black px-2 py-1 rounded border border-amber-500/20 text-amber-500 bg-amber-500/5 uppercase">
-                {client.status}
-              </span>
+              <span className="text-amber-500 text-[10px] border border-amber-500/20 px-2 py-1 rounded">{client.status}</span>
             </div>
-            <div className="flex justify-between items-center pt-4 border-t border-zinc-800/50">
-              <span className="text-zinc-500 text-sm italic">{client.type}</span>
-              <span className="text-white font-black text-lg tracking-tighter">{client.price}</span>
+            <div className="flex justify-between border-t border-zinc-800 pt-4 mt-2 text-sm">
+              <span className="text-zinc-500 italic">{client.type}</span>
+              <span className="text-white font-bold">{client.price}</span>
             </div>
           </div>
         ))}
