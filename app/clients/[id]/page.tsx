@@ -399,6 +399,7 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
       .single()
     if (!error && data) {
       setFollowups((prev) => [...prev, data])
+      await supabase.from('clientes').update({ proxima_accion: `${fuTitulo} · ${fuFecha}` }).eq('id', id)
       await registrarComunicacion('nota', `Follow-up creado: ${fuTitulo}`)
       setFuTitulo(''); setFuDetalle(''); setFuFecha(''); setFuHora(''); setFuTipo('llamada'); setFuUrgencia('media')
       setModalFollowup(false)
