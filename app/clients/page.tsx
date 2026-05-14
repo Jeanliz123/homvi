@@ -16,12 +16,12 @@ export default function ClientsPage() {
     <div className="p-8 ml-64 bg-black min-h-screen text-white">
       <div className="flex justify-between items-start mb-8">
         <div>
-          <h1 className="text-3xl font-bold italic tracking-tighter">Mis Clientes</h1>
+          <h1 className="text-3xl font-bold italic tracking-tighter text-amber-500">Mis Clientes</h1>
           <p className="text-zinc-500 text-sm mt-1">{clients.length} clientes en cartera</p>
         </div>
         <div className="flex gap-3">
           <ImportButton />
-          <button className="bg-amber-500 hover:bg-amber-600 text-black px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2">
+          <button className="bg-amber-500 hover:bg-amber-600 text-black px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-all">
             <UserPlus className="w-4 h-4" /> + NUEVO CLIENTE
           </button>
         </div>
