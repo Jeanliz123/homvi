@@ -160,9 +160,9 @@ function TagSelector({ clienteId, tags, onUpdate }: { clienteId: string, tags: s
       {abierto && (
         <div className="absolute top-8 left-0 z-50 bg-[#111] border border-white/10 rounded-2xl p-3 flex flex-wrap gap-2 w-64 shadow-2xl">
           {TAGS_DISPONIBLES.map(tag => (
-            <button key={tag} onClick={() => toggle(tag)}
+            <button key=<span className={`px-2 py-0.5 rounded-full border text-xs font-medium transition-all ${getTagStyle(tag)}`}>{tag}</span> onClick={() => toggle(tag)}
               className={`text-[11px] px-3 py-1 rounded-full border font-bold transition-all ${tags.includes(tag) ? 'bg-[#d4af37] text-black border-[#d4af37]' : 'border-white/10 text-gray-400 hover:border-white/30'}`}>
-              {tag}
+              <span className={`px-2 py-0.5 rounded-full border text-xs font-medium transition-all ${getTagStyle(tag)}`}>{tag}</span>
             </button>
           ))}
           <button onClick={() => setAbierto(false)} className="w-full text-[10px] text-gray-600 hover:text-gray-400 mt-1">Cerrar</button>
@@ -222,6 +222,16 @@ function ResumenAI({ cliente, comunicaciones, propiedades }: { cliente: any, com
     </div>
   )
 }
+
+
+const getTagStyle = (tagName: string) => {
+  const name = tagName.toLowerCase();
+  if (name.includes('hot')) return 'bg-red-500/20 text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.2)]';
+  if (name.includes('pre-aprobado')) return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50';
+  if (name.includes('frío') || name.includes('frio')) return 'bg-blue-500/20 text-blue-400 border-blue-500/50';
+  if (name.includes('luxury') || name.includes('investor')) return 'bg-amber-500/20 text-amber-400 border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]';
+  return 'bg-zinc-800 text-zinc-400 border-zinc-700';
+};
 
 export default function ClienteDetalle({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
@@ -543,8 +553,8 @@ export default function ClienteDetalle({ params }: { params: Promise<{ id: strin
           <p className="text-gray-300 text-sm mt-0.5">{cliente.telefono}{cliente.telefono && cliente.email && ' · '}{cliente.email}</p>
           <div className="flex flex-wrap gap-1.5 mt-2">
             {(cliente.tags || []).map((tag: string) => (
-              <span key={tag} className="flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full font-bold border border-white/10 bg-white/5 text-gray-300">
-                {tag}
+              <span key=<span className={`px-2 py-0.5 rounded-full border text-xs font-medium transition-all ${getTagStyle(tag)}`}>{tag}</span> className="flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full font-bold border border-white/10 bg-white/5 text-gray-300">
+                <span className={`px-2 py-0.5 rounded-full border text-xs font-medium transition-all ${getTagStyle(tag)}`}>{tag}</span>
                 <button onClick={async () => {
                   const nuevos = (cliente.tags || []).filter((t: string) => t !== tag)
                   await supabase.from('clientes').update({ tags: nuevos }).eq('id', id)

@@ -77,7 +77,6 @@ export default function Dashboard() {
           tipoPropiedad: c.tipo_propiedad || [],
           presupuestoMin: c.presupuesto_min || '',
           proximaAccion: c.proxima_accion || '',
-          proximaAccion: c.proxima_accion || '',
         }))
         setClientes(mapped)
 
