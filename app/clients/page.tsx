@@ -18,11 +18,12 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [selected, setSelected] = useState<Client | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [editForm, setEditForm] = useState<Client | null>(null)
   const [form, setForm] = useState({ name: '', email: '', phone: '', status: 'LEAD', type: '', price: '' })
 
-  useEffect(() => {
-    fetchClients()
-  }, [])
+  useEffect(() => { fetchClients() }, [])
 
   async function fetchClients() {
     const { data, error } = await supabase.from('clients').select('*').order('created_at', { ascending: false })
@@ -41,6 +42,33 @@ export default function ClientsPage() {
       fetchClients()
     }
     setSaving(false)
+  }
+
+  async function updateClient() {
+    if (!editForm) return
+    setSaving(true)
+    const initial = editForm.name.trim()[0].toUpperCase()
+    const { error } = await supabase.from('clients').update({ ...editForm, initial }).eq('id', editForm.id)
+    if (!error) {
+      setEditing(false)
+      setSelected({ ...editForm, initial })
+      fetchClients()
+    }
+    setSaving(false)
+  }
+
+  async function deleteClient(id: string) {
+    if (!confirm('¿Eliminar este cliente?')) return
+    await supabase.from('clients').delete().eq('id', id)
+    setSelected(null)
+    fetchClients()
+  }
+
+  const statusColors: Record<string, string> = {
+    LEAD: 'bg-zinc-700 text-zinc-300',
+    BUSCANDO: 'bg-blue-900 text-blue-300',
+    'EN OFERTA': 'bg-amber-900 text-amber-300',
+    CIERRE: 'bg-green-900 text-green-300',
   }
 
   return (
@@ -87,28 +115,77 @@ export default function ClientsPage() {
         </div>
       )}
 
-      {loading ? (
-        <div className="text-zinc-500 text-center py-20">Cargando clientes...</div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {clients.map((c) => (
-            <div key={c.id} className="bg-zinc-900/40 border border-zinc-800 p-6 rounded-2xl hover:border-amber-500 transition-all cursor-pointer">
-              <div className="flex items-start mb-4">
-                <div className="w-10 h-10 rounded-full bg-amber-500 text-black flex items-center justify-center font-bold mr-3">{c.initial}</div>
-                <div>
-                  <div className="font-bold text-white">{c.name}</div>
-                  <div className="text-zinc-500 text-xs">{c.email}</div>
+      <div className="flex gap-6">
+        <div className={`grid gap-6 transition-all ${selected ? 'grid-cols-1 md:grid-cols-2 flex-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 w-full'}`}>
+          {loading ? (
+            <div className="text-zinc-500 text-center py-20 col-span-3">Cargando clientes...</div>
+          ) : (
+            clients.map((c) => (
+              <div key={c.id} onClick={() => { setSelected(c); setEditing(false) }} className={`bg-zinc-900/40 border p-6 rounded-2xl hover:border-amber-500 transition-all cursor-pointer ${selected?.id === c.id ? 'border-amber-500' : 'border-zinc-800'}`}>
+                <div className="flex items-start mb-4">
+                  <div className="w-10 h-10 rounded-full bg-amber-500 text-black flex items-center justify-center font-bold mr-3">{c.initial}</div>
+                  <div>
+                    <div className="font-bold text-white">{c.name}</div>
+                    <div className="text-zinc-500 text-xs">{c.email}</div>
+                  </div>
                 </div>
+                <div className="flex justify-between items-center">
+                  <span className={`text-xs px-2 py-1 rounded ${statusColors[c.status] || 'bg-zinc-700 text-zinc-300'}`}>{c.status}</span>
+                  <span className="text-amber-500 font-bold text-sm">{c.price}</span>
+                </div>
+                {c.type && <div className="text-zinc-500 text-xs mt-2">{c.type}</div>}
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs bg-zinc-800 text-zinc-300 px-2 py-1 rounded">{c.status}</span>
-                <span className="text-amber-500 font-bold text-sm">{c.price}</span>
-              </div>
-              {c.type && <div className="text-zinc-500 text-xs mt-2">{c.type}</div>}
-            </div>
-          ))}
+            ))
+          )}
         </div>
-      )}
+
+        {selected && (
+          <div className="w-80 bg-zinc-900 border border-zinc-700 rounded-2xl p-6 h-fit sticky top-8">
+            <div className="flex justify-between items-start mb-6">
+              <div className="w-14 h-14 rounded-full bg-amber-500 text-black flex items-center justify-center text-xl font-black">{selected.initial}</div>
+              <button onClick={() => setSelected(null)} className="text-zinc-500 hover:text-white text-xl">✕</button>
+            </div>
+
+            {!editing ? (
+              <>
+                <h2 className="text-xl font-black text-white mb-1">{selected.name}</h2>
+                <span className={`text-xs px-2 py-1 rounded ${statusColors[selected.status] || 'bg-zinc-700 text-zinc-300'}`}>{selected.status}</span>
+                <div className="mt-4 flex flex-col gap-3 text-sm">
+                  {selected.email && <div><span className="text-zinc-500">Email</span><div className="text-white">{selected.email}</div></div>}
+                  {selected.phone && <div><span className="text-zinc-500">Teléfono</span><div className="text-white">{selected.phone}</div></div>}
+                  {selected.type && <div><span className="text-zinc-500">Propiedad</span><div className="text-white">{selected.type}</div></div>}
+                  {selected.price && <div><span className="text-zinc-500">Precio</span><div className="text-amber-500 font-bold">{selected.price}</div></div>}
+                </div>
+                <div className="flex gap-2 mt-6">
+                  <button onClick={() => { setEditing(true); setEditForm(selected) }} className="flex-1 bg-amber-500 text-black py-2 rounded-xl font-black text-xs uppercase hover:bg-white transition-all">Editar</button>
+                  <button onClick={() => deleteClient(selected.id)} className="bg-red-900 text-red-300 px-3 py-2 rounded-xl text-xs hover:bg-red-800 transition-all">Eliminar</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-lg font-black text-amber-500 uppercase mb-4">Editar Cliente</h2>
+                <div className="flex flex-col gap-3">
+                  <input value={editForm?.name} onChange={e => setEditForm({...editForm!, name: e.target.value})} className="bg-zinc-800 text-white px-3 py-2 rounded-xl border border-zinc-700 focus:border-amber-500 outline-none text-sm" />
+                  <input placeholder="Email" value={editForm?.email} onChange={e => setEditForm({...editForm!, email: e.target.value})} className="bg-zinc-800 text-white px-3 py-2 rounded-xl border border-zinc-700 focus:border-amber-500 outline-none text-sm" />
+                  <input placeholder="Teléfono" value={editForm?.phone} onChange={e => setEditForm({...editForm!, phone: e.target.value})} className="bg-zinc-800 text-white px-3 py-2 rounded-xl border border-zinc-700 focus:border-amber-500 outline-none text-sm" />
+                  <input placeholder="Tipo" value={editForm?.type} onChange={e => setEditForm({...editForm!, type: e.target.value})} className="bg-zinc-800 text-white px-3 py-2 rounded-xl border border-zinc-700 focus:border-amber-500 outline-none text-sm" />
+                  <input placeholder="Precio" value={editForm?.price} onChange={e => setEditForm({...editForm!, price: e.target.value})} className="bg-zinc-800 text-white px-3 py-2 rounded-xl border border-zinc-700 focus:border-amber-500 outline-none text-sm" />
+                  <select value={editForm?.status} onChange={e => setEditForm({...editForm!, status: e.target.value})} className="bg-zinc-800 text-white px-3 py-2 rounded-xl border border-zinc-700 focus:border-amber-500 outline-none text-sm">
+                    <option>LEAD</option>
+                    <option>BUSCANDO</option>
+                    <option>EN OFERTA</option>
+                    <option>CIERRE</option>
+                  </select>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <button onClick={() => setEditing(false)} className="flex-1 bg-zinc-800 text-white py-2 rounded-xl font-bold text-xs hover:bg-zinc-700 transition-all">Cancelar</button>
+                  <button onClick={updateClient} disabled={saving} className="flex-1 bg-amber-500 text-black py-2 rounded-xl font-black text-xs uppercase hover:bg-white transition-all disabled:opacity-50">{saving ? '...' : 'Guardar'}</button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
