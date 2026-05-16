@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 
 type Property = {
@@ -194,7 +195,7 @@ export default function PropertiesPage() {
             <div className="text-zinc-500 text-center py-20 col-span-3">No hay propiedades aún.</div>
           ) : (
             properties.map((p) => (
-              <div key={p.id} onClick={() => { setSelected(p); setEditing(false); fetchImages(p.id) }} className={`bg-zinc-900/40 border rounded-2xl hover:border-amber-500 transition-all cursor-pointer overflow-hidden ${selected?.id === p.id ? 'border-amber-500' : 'border-zinc-800'}`}>
+              <div key={p.id} onClick={() => router.push(`/properties/${p.id}`)} className={`bg-zinc-900/40 border rounded-2xl hover:border-amber-500 transition-all cursor-pointer overflow-hidden ${selected?.id === p.id ? 'border-amber-500' : 'border-zinc-800'}`}>
                 {p.image_url ? (
                   <img src={p.image_url} alt={p.title} className="w-full h-40 object-cover" />
                 ) : (
