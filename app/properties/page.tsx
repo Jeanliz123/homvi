@@ -15,6 +15,12 @@ type Property = {
   image_url: string
 }
 
+type PropertyImage = {
+  id: string
+  property_id: string
+  image_url: string
+}
+
 const statusColors: Record<string, string> = {
   DISPONIBLE: 'bg-green-900 text-green-300',
   RESERVADA: 'bg-amber-900 text-amber-300',
@@ -27,11 +33,13 @@ export default function PropertiesPage() {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [selected, setSelected] = useState<Property | null>(null)
+  const [selectedImages, setSelectedImages] = useState<PropertyImage[]>([])
   const [editing, setEditing] = useState(false)
   const [editForm, setEditForm] = useState<Property | null>(null)
+  const [galleryIndex, setGalleryIndex] = useState(0)
   const [form, setForm] = useState({ title: '', type: '', price: '', location: '', bedrooms: '', bathrooms: '', status: 'DISPONIBLE' })
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [editImageFile, setEditImageFile] = useState<File | null>(null)
+  const [imageFiles, setImageFiles] = useState<File[]>([])
+  const [editImageFiles, setEditImageFiles] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const editFileRef = useRef<HTMLInputElement>(null)
@@ -44,13 +52,26 @@ export default function PropertiesPage() {
     setLoading(false)
   }
 
-  async function uploadImage(file: File, id: string): Promise<string | null> {
-    const ext = file.name.split('.').pop()
-    const path = `${id}.${ext}`
-    const { error } = await supabase.storage.from('properties').upload(path, file, { upsert: true })
-    if (error) return null
-    const { data } = supabase.storage.from('properties').getPublicUrl(path)
-    return data.publicUrl
+  async function fetchImages(propertyId: string) {
+    const { data } = await supabase.from('property_images').select('*').eq('property_id', propertyId).order('created_at')
+    setSelectedImages(data || [])
+    setGalleryIndex(0)
+  }
+
+  async function uploadImages(files: File[], propertyId: string) {
+    const urls: string[] = []
+    for (const file of files) {
+      const path = `${propertyId}/${Date.now()}-${file.name}`
+      const { error } = await supabase.storage.from('properties').upload(path, file, { upsert: true })
+      if (!error) {
+        const { data } = supabase.storage.from('properties').getPublicUrl(path)
+        urls.push(data.publicUrl)
+      }
+    }
+    for (const url of urls) {
+      await supabase.from('property_images').insert([{ property_id: propertyId, image_url: url }])
+    }
+    return urls
   }
 
   async function saveProperty() {
@@ -64,15 +85,14 @@ export default function PropertiesPage() {
     }]).select().single()
 
     if (!error && data) {
-      let image_url = null
-      if (imageFile) {
+      if (imageFiles.length > 0) {
         setUploading(true)
-        image_url = await uploadImage(imageFile, data.id)
-        if (image_url) await supabase.from('properties').update({ image_url }).eq('id', data.id)
+        const urls = await uploadImages(imageFiles, data.id)
+        if (urls.length > 0) await supabase.from('properties').update({ image_url: urls[0] }).eq('id', data.id)
         setUploading(false)
       }
       setForm({ title: '', type: '', price: '', location: '', bedrooms: '', bathrooms: '', status: 'DISPONIBLE' })
-      setImageFile(null)
+      setImageFiles([])
       setShowForm(false)
       fetchProperties()
     }
@@ -83,28 +103,29 @@ export default function PropertiesPage() {
     if (!editForm) return
     setSaving(true)
     const initial = editForm.title.trim()[0].toUpperCase()
-    let image_url = editForm.image_url
-
-    if (editImageFile) {
+    if (editImageFiles.length > 0) {
       setUploading(true)
-      image_url = await uploadImage(editImageFile, editForm.id) || image_url
+      const urls = await uploadImages(editImageFiles, editForm.id)
+      if (urls.length > 0 && !editForm.image_url) {
+        await supabase.from('properties').update({ image_url: urls[0] }).eq('id', editForm.id)
+      }
       setUploading(false)
     }
-
-    const { error } = await supabase.from('properties').update({ ...editForm, initial, image_url }).eq('id', editForm.id)
-    if (!error) {
-      const updated = { ...editForm, initial, image_url }
-      setEditing(false)
-      setSelected(updated)
-      setEditImageFile(null)
-      fetchProperties()
-    }
+    await supabase.from('properties').update({ ...editForm, initial }).eq('id', editForm.id)
+    setEditing(false)
+    setEditImageFiles([])
+    fetchProperties()
+    fetchImages(editForm.id)
     setSaving(false)
+  }
+
+  async function deleteImage(imageId: string) {
+    await supabase.from('property_images').delete().eq('id', imageId)
+    if (selected) fetchImages(selected.id)
   }
 
   async function deleteProperty(id: string) {
     if (!confirm('¿Eliminar esta propiedad?')) return
-    await supabase.storage.from('properties').remove([`${id}.jpg`, `${id}.png`, `${id}.jpeg`, `${id}.webp`])
     await supabase.from('properties').delete().eq('id', id)
     setSelected(null)
     fetchProperties()
@@ -141,15 +162,22 @@ export default function PropertiesPage() {
                 <option>VENDIDA</option>
               </select>
               <div>
-                <div className="text-zinc-400 text-xs mb-2 uppercase font-bold">Foto de la propiedad</div>
-                <input ref={fileRef} type="file" accept="image/*" onChange={e => setImageFile(e.target.files?.[0] || null)} className="hidden" />
+                <div className="text-zinc-400 text-xs mb-2 uppercase font-bold">Fotos (puedes subir varias)</div>
+                <input ref={fileRef} type="file" accept="image/*" multiple onChange={e => setImageFiles(Array.from(e.target.files || []))} className="hidden" />
                 <button onClick={() => fileRef.current?.click()} className="w-full border-2 border-dashed border-zinc-700 hover:border-amber-500 rounded-xl py-4 text-zinc-500 hover:text-amber-500 text-sm transition-all">
-                  {imageFile ? `✓ ${imageFile.name}` : '+ Subir imagen'}
+                  {imageFiles.length > 0 ? `✓ ${imageFiles.length} foto(s) seleccionada(s)` : '+ Subir fotos'}
                 </button>
+                {imageFiles.length > 0 && (
+                  <div className="flex gap-2 mt-2 overflow-x-auto">
+                    {imageFiles.map((f, i) => (
+                      <img key={i} src={URL.createObjectURL(f)} className="w-16 h-16 object-cover rounded-lg border border-zinc-700" />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => { setShowForm(false); setImageFile(null) }} className="flex-1 bg-zinc-800 text-white py-3 rounded-xl font-bold text-sm hover:bg-zinc-700 transition-all">Cancelar</button>
+              <button onClick={() => { setShowForm(false); setImageFiles([]) }} className="flex-1 bg-zinc-800 text-white py-3 rounded-xl font-bold text-sm hover:bg-zinc-700 transition-all">Cancelar</button>
               <button onClick={saveProperty} disabled={saving || uploading} className="flex-1 bg-amber-500 text-black py-3 rounded-xl font-black text-sm uppercase hover:bg-white transition-all disabled:opacity-50">
                 {uploading ? 'Subiendo...' : saving ? 'Guardando...' : 'Guardar'}
               </button>
@@ -166,7 +194,7 @@ export default function PropertiesPage() {
             <div className="text-zinc-500 text-center py-20 col-span-3">No hay propiedades aún.</div>
           ) : (
             properties.map((p) => (
-              <div key={p.id} onClick={() => { setSelected(p); setEditing(false) }} className={`bg-zinc-900/40 border rounded-2xl hover:border-amber-500 transition-all cursor-pointer overflow-hidden ${selected?.id === p.id ? 'border-amber-500' : 'border-zinc-800'}`}>
+              <div key={p.id} onClick={() => { setSelected(p); setEditing(false); fetchImages(p.id) }} className={`bg-zinc-900/40 border rounded-2xl hover:border-amber-500 transition-all cursor-pointer overflow-hidden ${selected?.id === p.id ? 'border-amber-500' : 'border-zinc-800'}`}>
                 {p.image_url ? (
                   <img src={p.image_url} alt={p.title} className="w-full h-40 object-cover" />
                 ) : (
@@ -196,13 +224,30 @@ export default function PropertiesPage() {
 
         {selected && (
           <div className="w-80 bg-zinc-900 border border-zinc-700 rounded-2xl overflow-hidden h-fit sticky top-8">
-            {selected.image_url ? (
-              <img src={selected.image_url} alt={selected.title} className="w-full h-48 object-cover" />
-            ) : (
-              <div className="w-full h-32 bg-zinc-800 flex items-center justify-center text-5xl">🏠</div>
-            )}
+            {/* Galería */}
+            <div className="relative">
+              {selectedImages.length > 0 ? (
+                <>
+                  <img src={selectedImages[galleryIndex]?.image_url} alt="" className="w-full h-48 object-cover" />
+                  {selectedImages.length > 1 && (
+                    <>
+                      <button onClick={() => setGalleryIndex(i => (i - 1 + selectedImages.length) % selectedImages.length)} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm hover:bg-black">‹</button>
+                      <button onClick={() => setGalleryIndex(i => (i + 1) % selectedImages.length)} className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm hover:bg-black">›</button>
+                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                        {selectedImages.map((_, i) => <div key={i} className={`w-1.5 h-1.5 rounded-full ${i === galleryIndex ? 'bg-amber-500' : 'bg-white/50'}`} />)}
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : selected.image_url ? (
+                <img src={selected.image_url} alt="" className="w-full h-48 object-cover" />
+              ) : (
+                <div className="w-full h-32 bg-zinc-800 flex items-center justify-center text-5xl">🏠</div>
+              )}
+            </div>
+
             <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
+              <div className="flex justify-between items-start mb-2">
                 <div></div>
                 <button onClick={() => setSelected(null)} className="text-zinc-500 hover:text-white text-xl">✕</button>
               </div>
@@ -220,6 +265,21 @@ export default function PropertiesPage() {
                       {selected.bathrooms > 0 && <div><span className="text-zinc-500">Baños</span><div className="text-white font-bold">{selected.bathrooms}</div></div>}
                     </div>
                   </div>
+
+                  {selectedImages.length > 0 && (
+                    <div className="mt-4">
+                      <div className="text-zinc-500 text-xs mb-2">GALERÍA ({selectedImages.length} fotos)</div>
+                      <div className="flex gap-2 overflow-x-auto">
+                        {selectedImages.map((img, i) => (
+                          <div key={img.id} className="relative flex-shrink-0">
+                            <img src={img.image_url} onClick={() => setGalleryIndex(i)} className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 ${i === galleryIndex ? 'border-amber-500' : 'border-transparent'}`} />
+                            <button onClick={() => deleteImage(img.id)} className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">×</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex gap-2 mt-6">
                     <button onClick={() => { setEditing(true); setEditForm(selected) }} className="flex-1 bg-amber-500 text-black py-2 rounded-xl font-black text-xs uppercase hover:bg-white transition-all">Editar</button>
                     <button onClick={() => deleteProperty(selected.id)} className="bg-red-900 text-red-300 px-3 py-2 rounded-xl text-xs hover:bg-red-800 transition-all">Eliminar</button>
@@ -242,13 +302,13 @@ export default function PropertiesPage() {
                       <option>RESERVADA</option>
                       <option>VENDIDA</option>
                     </select>
-                    <input ref={editFileRef} type="file" accept="image/*" onChange={e => setEditImageFile(e.target.files?.[0] || null)} className="hidden" />
+                    <input ref={editFileRef} type="file" accept="image/*" multiple onChange={e => setEditImageFiles(Array.from(e.target.files || []))} className="hidden" />
                     <button onClick={() => editFileRef.current?.click()} className="w-full border-2 border-dashed border-zinc-700 hover:border-amber-500 rounded-xl py-3 text-zinc-500 hover:text-amber-500 text-xs transition-all">
-                      {editImageFile ? `✓ ${editImageFile.name}` : '📷 Cambiar imagen'}
+                      {editImageFiles.length > 0 ? `✓ ${editImageFiles.length} foto(s)` : '📷 Agregar más fotos'}
                     </button>
                   </div>
                   <div className="flex gap-2 mt-4">
-                    <button onClick={() => { setEditing(false); setEditImageFile(null) }} className="flex-1 bg-zinc-800 text-white py-2 rounded-xl font-bold text-xs hover:bg-zinc-700 transition-all">Cancelar</button>
+                    <button onClick={() => { setEditing(false); setEditImageFiles([]) }} className="flex-1 bg-zinc-800 text-white py-2 rounded-xl font-bold text-xs hover:bg-zinc-700 transition-all">Cancelar</button>
                     <button onClick={updateProperty} disabled={saving || uploading} className="flex-1 bg-amber-500 text-black py-2 rounded-xl font-black text-xs uppercase hover:bg-white transition-all disabled:opacity-50">{uploading ? '...' : saving ? '...' : 'Guardar'}</button>
                   </div>
                 </>
