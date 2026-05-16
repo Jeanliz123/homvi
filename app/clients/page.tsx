@@ -20,10 +20,10 @@ export default function ClientsPage() {
         </div>
         <div className="flex gap-4">
           <button onClick={() => alert('Importador')} className="flex items-center gap-2 bg-white text-black px-6 py-3 rounded-xl font-black text-xs uppercase hover:bg-amber-500 transition-all">
-            <Upload className="w-4 h-4" /> Importar Excel
+             Importar Excel
           </button>
           <button className="bg-amber-500 text-black px-6 py-3 rounded-xl font-black text-xs uppercase hover:bg-white transition-all">
-            <UserPlus className="w-4 h-4" /> + Nuevo Cliente
+             + Nuevo Cliente
           </button>
         </div>
       </div>
