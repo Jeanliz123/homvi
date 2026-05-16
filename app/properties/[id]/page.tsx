@@ -1,189 +1,165 @@
 'use client'
+import { useEffect, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { supabase } from '../../lib/supabase'
 
-import { useRouter } from 'next/navigation'
-import { useEffect, useState, use } from 'react'
-import Link from 'next/link'
-import { supabase } from '../../app/lib/supabase'
-
-interface Propiedad {
-  id: string; nombre: string; ubicacion: string; precio: string; area: string; tipo: string
-  imagen?: string; descripcion?: string; recamaras?: number; banos?: number
-  estacionamientos?: number; estado?: string; notas?: string
+type Property = {
+  id: string
+  title: string
+  type: string
+  price: string
+  location: string
+  bedrooms: number
+  bathrooms: number
+  status: string
+  initial: string
+  image_url: string
 }
-interface Cliente { id: string; nombre: string; etapa: string }
 
-export default function PropertyDetailPage({ params }: { params: Promise<{ id: string }> }) {
+type PropertyImage = {
+  id: string
+  property_id: string
+  image_url: string
+}
+
+const statusColors: Record<string, string> = {
+  DISPONIBLE: 'bg-green-900 text-green-300',
+  RESERVADA: 'bg-amber-900 text-amber-300',
+  VENDIDA: 'bg-zinc-700 text-zinc-400',
+}
+
+export default function PropertyPage() {
+  const { id } = useParams()
   const router = useRouter()
-  const { id } = use(params)
-  const [propiedad, setPropiedad] = useState<Propiedad | null>(null)
-  const [clientesAsignados, setClientesAsignados] = useState<Cliente[]>([])
-  const [cargando, setCargando] = useState(true)
-  const [editando, setEditando] = useState(false)
-  const [guardando, setGuardando] = useState(false)
-  const [confirmEliminar, setConfirmEliminar] = useState(false)
-  const [form, setForm] = useState<Partial<Propiedad>>({})
-  const [fotoActual, setFotoActual] = useState(0)
+  const [property, setProperty] = useState<Property | null>(null)
+  const [images, setImages] = useState<PropertyImage[]>([])
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
 
-  useEffect(() => { cargar() }, [id])
+  useEffect(() => {
+    fetchProperty()
+    fetchImages()
+  }, [id])
 
-  const cargar = async () => {
-    setCargando(true)
-    const { data: prop } = await supabase.from('propiedades').select('*').eq('id', id).single()
-    if (prop) { setPropiedad(prop); setForm(prop) }
-    const { data: asignaciones } = await supabase.from('clientes_propiedades').select('cliente_id, clientes(id, nombre, etapa)').eq('propiedad_id', id)
-    if (asignaciones) setClientesAsignados(asignaciones.map((a: any) => a.clientes).filter(Boolean) as Cliente[])
-    setCargando(false)
+  async function fetchProperty() {
+    const { data } = await supabase.from('properties').select('*').eq('id', id).single()
+    if (data) setProperty(data)
+    setLoading(false)
   }
 
-  const guardar = async () => {
-    if (!propiedad) return
-    setGuardando(true)
-    await supabase.from('propiedades').update(form).eq('id', id)
-    setPropiedad({ ...propiedad, ...form })
-    setEditando(false); setGuardando(false)
+  async function fetchImages() {
+    const { data } = await supabase.from('property_images').select('*').eq('property_id', id).order('created_at')
+    if (data) setImages(data)
   }
 
-  const eliminar = async () => {
-    await supabase.from('propiedades').delete().eq('id', id)
+  async function handleUpload(files: FileList | null) {
+    if (!files || !property) return
+    setUploading(true)
+    for (const file of Array.from(files)) {
+      const path = `${property.id}/${Date.now()}-${file.name}`
+      const { error } = await supabase.storage.from('properties').upload(path, file, { upsert: true })
+      if (!error) {
+        const { data } = supabase.storage.from('properties').getPublicUrl(path)
+        await supabase.from('property_images').insert([{ property_id: property.id, image_url: data.publicUrl }])
+      }
+    }
+    fetchImages()
+    setUploading(false)
+  }
+
+  async function deleteImage(imageId: string) {
+    if (!confirm('Eliminar esta foto?')) return
+    await supabase.from('property_images').delete().eq('id', imageId)
+    setActiveIndex(0)
+    fetchImages()
+  }
+
+  async function deleteProperty() {
+    if (!confirm('Eliminar esta propiedad?')) return
+    await supabase.from('properties').delete().eq('id', id)
     router.push('/properties')
   }
 
-  const etapaColor: Record<string, string> = { LEAD: '#3b82f6', BUSCANDO: '#d4af37', 'EN OFERTA': '#10b981', CIERRE: '#a855f7' }
-  const fotos = propiedad?.imagen ? propiedad.imagen.split(',').map(f => f.trim()).filter(Boolean) : []
-  const fotoAnterior = () => setFotoActual(f => (f - 1 + fotos.length) % fotos.length)
-  const fotoSiguiente = () => setFotoActual(f => (f + 1) % fotos.length)
+  if (loading) return <div className="p-8 text-zinc-500">Cargando...</div>
+  if (!property) return <div className="p-8 text-zinc-500">Propiedad no encontrada.</div>
 
-  if (cargando) return <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ color: '#d4af37', letterSpacing: '4px', fontSize: '12px' }}>CARGANDO...</div></div>
-  if (!propiedad) return <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}><div style={{ color: '#fff' }}>Propiedad no encontrada</div><Link href="/properties" style={{ color: '#d4af37', fontSize: '13px' }}>← Volver</Link></div>
+  const allImages = images.length > 0 ? images : (property.image_url ? [{ id: 'main', property_id: property.id, image_url: property.image_url }] : [])
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff', fontFamily: 'system-ui, sans-serif' }}>
+    <div className="p-8 max-w-5xl">
+      <button onClick={() => router.push('/properties')} className="text-zinc-500 hover:text-amber-500 text-sm mb-6 flex items-center gap-2 transition-all">
+        Volver a Propiedades
+      </button>
 
-      {/* FOTO — sin overlay, botones flotantes encima */}
-      <div style={{ position: 'relative', height: '70vh', overflow: 'hidden', background: '#111' }}>
-        {fotos.length > 0 ? (
-          <img key={fotoActual} src={fotos[fotoActual]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-        ) : (
-          <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg,#1a1a2e,#2d2d5e)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '64px', opacity: 0.3 }}>🏠</div>
-        )}
-
-        {/* Header botones — fondo solo detrás de ellos */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px' }}>
-          <button onClick={() => router.push('/properties')} style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '50px', color: '#fff', padding: '9px 16px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>← Catálogo</button>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={() => setEditando(!editando)} style={{ background: editando ? 'rgba(212,175,55,0.9)' : 'rgba(0,0,0,0.55)', backdropFilter: 'blur(12px)', border: `1px solid ${editando ? '#d4af37' : 'rgba(255,255,255,0.2)'}`, borderRadius: '50px', color: editando ? '#000' : '#fff', padding: '9px 16px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>{editando ? '✕ Cancelar' : '✏️ Editar'}</button>
-            {!editando && <button onClick={() => setConfirmEliminar(true)} style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(12px)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: '50px', color: '#ef4444', padding: '9px 14px', cursor: 'pointer', fontSize: '14px' }}>🗑️</button>}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div>
+          <div className="relative rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-800">
+            {allImages.length > 0 ? (
+              <img src={allImages[activeIndex]?.image_url} alt={property.title} className="w-full h-72 object-cover" />
+            ) : (
+              <div className="w-full h-72 flex items-center justify-center text-6xl bg-zinc-800">🏠</div>
+            )}
+            {allImages.length > 1 && (
+              <>
+                <button onClick={() => setActiveIndex(i => (i - 1 + allImages.length) % allImages.length)} className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/60 text-white w-9 h-9 rounded-full flex items-center justify-center text-lg hover:bg-black">‹</button>
+                <button onClick={() => setActiveIndex(i => (i + 1) % allImages.length)} className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/60 text-white w-9 h-9 rounded-full flex items-center justify-center text-lg hover:bg-black">›</button>
+              </>
+            )}
           </div>
-        </div>
 
-        {/* Badges tipo/estado */}
-        <div style={{ position: 'absolute', bottom: '16px', left: '20px', zIndex: 10, display: 'flex', gap: '8px' }}>
-          <div style={{ background: 'rgba(212,175,55,0.9)', color: '#000', padding: '5px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>{propiedad.tipo || 'Propiedad'}</div>
-          {propiedad.estado && <div style={{ background: propiedad.estado === 'Disponible' ? 'rgba(16,185,129,0.9)' : 'rgba(239,68,68,0.85)', color: '#fff', padding: '5px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 600 }}>{propiedad.estado}</div>}
-        </div>
-
-        {/* Flechas carrusel */}
-        {fotos.length > 1 && <>
-          <button onClick={fotoAnterior} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', zIndex: 10, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '50%', width: '42px', height: '42px', color: '#fff', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
-          <button onClick={fotoSiguiente} style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', zIndex: 10, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '50%', width: '42px', height: '42px', color: '#fff', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
-          <div style={{ position: 'absolute', bottom: '16px', right: '20px', zIndex: 10, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '20px', padding: '4px 10px', fontSize: '12px', color: '#fff' }}>{fotoActual + 1} / {fotos.length}</div>
-          <div style={{ position: 'absolute', bottom: '52px', left: '50%', transform: 'translateX(-50%)', zIndex: 10, display: 'flex', gap: '6px' }}>
-            {fotos.map((_, i) => <button key={i} onClick={() => setFotoActual(i)} style={{ width: i === fotoActual ? '20px' : '6px', height: '6px', borderRadius: '3px', background: i === fotoActual ? '#d4af37' : 'rgba(255,255,255,0.5)', border: 'none', cursor: 'pointer', padding: 0, transition: 'all 0.3s' }} />)}
-          </div>
-        </>}
-      </div>
-
-      {/* INFO — debajo de la foto, sin overlay */}
-      <div style={{ background: '#0a0a0a', padding: '24px 24px 0' }}>
-        <div style={{ fontSize: '12px', color: '#888', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '6px' }}>📍 {propiedad.ubicacion}</div>
-        <div style={{ fontSize: 'clamp(24px,4vw,42px)', fontWeight: 800, lineHeight: 1.1, marginBottom: '16px' }}>{propiedad.nombre}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingBottom: '24px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          <div style={{ background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.4)', borderRadius: '50px', padding: '10px 20px', fontSize: '20px', fontWeight: 800, color: '#d4af37' }}>{propiedad.precio}</div>
-          {propiedad.area && <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '50px', padding: '10px 16px', fontSize: '13px', fontWeight: 600 }}>{propiedad.area} m²</div>}
-          {propiedad.recamaras != null && <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '50px', padding: '10px 16px', fontSize: '13px', fontWeight: 600 }}>🛏 {propiedad.recamaras} Rec.</div>}
-          {propiedad.banos != null && <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '50px', padding: '10px 16px', fontSize: '13px', fontWeight: 600 }}>🚿 {propiedad.banos} Baños</div>}
-          {propiedad.estacionamientos != null && <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '50px', padding: '10px 16px', fontSize: '13px', fontWeight: 600 }}>🚗 {propiedad.estacionamientos} Est.</div>}
-        </div>
-      </div>
-
-      {/* Contenido */}
-      <div style={{ padding: '24px', maxWidth: '700px', margin: '0 auto' }}>
-        {!editando ? (
-          <>
-            {propiedad.descripcion && <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '20px', marginBottom: '16px' }}><div style={{ fontSize: '11px', color: '#d4af37', letterSpacing: '2px', marginBottom: '10px' }}>DESCRIPCIÓN</div><div style={{ fontSize: '15px', color: '#ccc', lineHeight: '1.7' }}>{propiedad.descripcion}</div></div>}
-            {propiedad.notas && <div style={{ background: 'rgba(212,175,55,0.05)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: '16px', padding: '20px', marginBottom: '16px' }}><div style={{ fontSize: '11px', color: '#d4af37', letterSpacing: '2px', marginBottom: '10px' }}>NOTAS PRIVADAS</div><div style={{ fontSize: '15px', color: '#ccc', lineHeight: '1.7' }}>{propiedad.notas}</div></div>}
-          </>
-        ) : (
-          <div style={{ background: 'rgba(212,175,55,0.04)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>
-            <div style={{ fontSize: '12px', color: '#d4af37', fontWeight: 700, marginBottom: '20px', letterSpacing: '2px' }}>EDITAR PROPIEDAD</div>
-            {[['Nombre','nombre','Ej: Penthouse Polanco'],['Ubicación','ubicacion','Ej: Polanco'],['Precio','precio','Ej: $2.5M'],['Área','area','Ej: 250m²']].map(([label,key,ph]) => (
-              <div key={key} style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '11px', color: '#888', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '1px' }}>{label}</label>
-                <input value={(form as any)[key] || ''} onChange={e => setForm({ ...form, [key]: e.target.value })} placeholder={ph} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', color: '#fff', padding: '11px 14px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+          <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+            {allImages.map((img, i) => (
+              <div key={img.id} className="relative flex-shrink-0 group">
+                <img src={img.image_url} onClick={() => setActiveIndex(i)} className={`w-20 h-20 object-cover rounded-xl cursor-pointer border-2 transition-all ${i === activeIndex ? 'border-amber-500' : 'border-zinc-700'}`} />
+                {img.id !== 'main' && (
+                  <button onClick={() => deleteImage(img.id)} className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full w-5 h-5 items-center justify-center text-xs hidden group-hover:flex">x</button>
+                )}
               </div>
             ))}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '14px' }}>
-              {[['recamaras','Rec.'],['banos','Baños'],['estacionamientos','Est.']].map(([key,label]) => (
-                <div key={key}>
-                  <label style={{ display: 'block', fontSize: '11px', color: '#888', marginBottom: '5px' }}>{label}</label>
-                  <input type="number" value={(form as any)[key] || ''} onChange={e => setForm({ ...form, [key]: parseInt(e.target.value) || undefined })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', color: '#fff', padding: '11px 14px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-              ))}
-            </div>
-            {[{label:'Estado',key:'estado',opts:['','Disponible','En negociación','Vendida','Rentada']},{label:'Tipo',key:'tipo',opts:['Apartamento','Casa','Villa','Penthouse','Local','Terreno','Oficina']}].map(({label,key,opts}) => (
-              <div key={key} style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '11px', color: '#888', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '1px' }}>{label}</label>
-                <select value={(form as any)[key] || ''} onChange={e => setForm({ ...form, [key]: e.target.value })} style={{ width: '100%', background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', color: '#fff', padding: '11px 14px', fontSize: '14px', outline: 'none' }}>
-                  {opts.map(o => <option key={o} value={o}>{o || 'Sin estado'}</option>)}
-                </select>
-              </div>
-            ))}
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ display: 'block', fontSize: '11px', color: '#888', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '1px' }}>Fotos (URLs separadas por coma)</label>
-              <textarea value={form.imagen || ''} onChange={e => setForm({ ...form, imagen: e.target.value })} rows={3} placeholder="https://foto1.jpg, https://foto2.jpg" style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', color: '#fff', padding: '11px 14px', fontSize: '14px', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }} />
-              <div style={{ fontSize: '11px', color: '#555', marginTop: '4px' }}>Separa múltiples fotos con comas para el carrusel</div>
-            </div>
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ display: 'block', fontSize: '11px', color: '#888', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '1px' }}>Descripción</label>
-              <textarea value={form.descripcion || ''} onChange={e => setForm({ ...form, descripcion: e.target.value })} rows={3} placeholder="Describe la propiedad..." style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', color: '#fff', padding: '11px 14px', fontSize: '14px', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }} />
-            </div>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '11px', color: '#888', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '1px' }}>Notas privadas</label>
-              <textarea value={form.notas || ''} onChange={e => setForm({ ...form, notas: e.target.value })} rows={2} placeholder="Notas internas..." style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', color: '#fff', padding: '11px 14px', fontSize: '14px', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }} />
-            </div>
-            <button onClick={guardar} disabled={guardando} style={{ width: '100%', background: guardando ? 'rgba(212,175,55,0.3)' : '#d4af37', color: guardando ? '#888' : '#000', border: 'none', borderRadius: '12px', padding: '16px', fontSize: '14px', fontWeight: 700, cursor: guardando ? 'default' : 'pointer', letterSpacing: '1px' }}>{guardando ? 'GUARDANDO...' : 'GUARDAR CAMBIOS'}</button>
+            <label className="w-20 h-20 flex-shrink-0 border-2 border-dashed border-zinc-700 hover:border-amber-500 rounded-xl flex flex-col items-center justify-center cursor-pointer text-zinc-500 hover:text-amber-500 transition-all">
+              <span className="text-2xl">+</span>
+              <span className="text-xs">{uploading ? '...' : 'Foto'}</span>
+              <input type="file" accept="image/*" multiple className="hidden" onChange={e => handleUpload(e.target.files)} disabled={uploading} />
+            </label>
           </div>
-        )}
-        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '20px', marginBottom: '60px' }}>
-          <div style={{ fontSize: '11px', color: '#d4af37', letterSpacing: '2px', marginBottom: '16px' }}>CLIENTES INTERESADOS ({clientesAsignados.length})</div>
-          {clientesAsignados.length === 0 ? (
-            <div style={{ color: '#555', fontSize: '13px', textAlign: 'center', padding: '16px 0' }}>Ningún cliente tiene esta propiedad asignada</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {clientesAsignados.map(cliente => (
-                <Link key={cliente.id} href={`/clients/${cliente.id}`} style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '14px', textDecoration: 'none' }}>
-                  <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, color: '#d4af37', flexShrink: 0 }}>{cliente.nombre.split(' ').slice(0,2).map((n:string)=>n[0]).join('').toUpperCase()}</div>
-                  <div style={{ flex: 1 }}><div style={{ fontSize: '14px', color: '#fff', fontWeight: 500 }}>{cliente.nombre}</div><div style={{ fontSize: '11px', color: etapaColor[cliente.etapa]||'#888', marginTop: '2px' }}>{cliente.etapa}</div></div>
-                  <div style={{ color: '#555', fontSize: '16px' }}>→</div>
-                </Link>
-              ))}
+        </div>
+
+        <div>
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-black text-white">{property.title}</h1>
+              <div className="text-zinc-400 text-sm mt-1">{property.type}</div>
             </div>
-          )}
+            <span className={`text-xs px-3 py-1 rounded-full font-bold ${statusColors[property.status]}`}>{property.status}</span>
+          </div>
+
+          <div className="text-3xl font-black text-amber-500 mb-6">{property.price}</div>
+
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            {property.location && (
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 col-span-2">
+                <div className="text-zinc-500 text-xs mb-1">UBICACION</div>
+                <div className="text-white font-medium">📍 {property.location}</div>
+              </div>
+            )}
+            {property.bedrooms > 0 && (
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                <div className="text-zinc-500 text-xs mb-1">HABITACIONES</div>
+                <div className="text-white font-bold text-xl">🛏 {property.bedrooms}</div>
+              </div>
+            )}
+            {property.bathrooms > 0 && (
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                <div className="text-zinc-500 text-xs mb-1">BANOS</div>
+                <div className="text-white font-bold text-xl">🚿 {property.bathrooms}</div>
+              </div>
+            )}
+          </div>
+
+          <button onClick={deleteProperty} className="w-full bg-red-900 text-red-300 py-3 rounded-xl text-sm hover:bg-red-800 transition-all">Eliminar Propiedad</button>
         </div>
       </div>
-
-      {confirmEliminar && (
-        <div onClick={() => setConfirmEliminar(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 100 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#111', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '24px 24px 0 0', padding: '28px 24px', width: '100%', maxWidth: '600px' }}>
-            <div style={{ fontSize: '17px', fontWeight: 700, marginBottom: '8px' }}>¿Eliminar propiedad?</div>
-            <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '24px' }}>Eliminarás <strong style={{ color: '#fff' }}>{propiedad.nombre}</strong> y no se puede deshacer.</div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setConfirmEliminar(false)} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', padding: '16px', cursor: 'pointer', fontSize: '14px' }}>Cancelar</button>
-              <button onClick={eliminar} style={{ flex: 1, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: '12px', color: '#ef4444', padding: '16px', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}>Eliminar</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
