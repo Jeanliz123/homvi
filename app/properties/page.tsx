@@ -26,6 +26,8 @@ export default function PropertiesPage() {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [selected, setSelected] = useState<Property | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [editForm, setEditForm] = useState<Property | null>(null)
   const [form, setForm] = useState({ title: '', type: '', price: '', location: '', bedrooms: '', bathrooms: '', status: 'DISPONIBLE' })
 
   useEffect(() => { fetchProperties() }, [])
@@ -41,14 +43,26 @@ export default function PropertiesPage() {
     setSaving(true)
     const initial = form.title.trim()[0].toUpperCase()
     const { error } = await supabase.from('properties').insert([{
-      ...form,
-      initial,
+      ...form, initial,
       bedrooms: parseInt(form.bedrooms) || 0,
       bathrooms: parseInt(form.bathrooms) || 0,
     }])
     if (!error) {
       setForm({ title: '', type: '', price: '', location: '', bedrooms: '', bathrooms: '', status: 'DISPONIBLE' })
       setShowForm(false)
+      fetchProperties()
+    }
+    setSaving(false)
+  }
+
+  async function updateProperty() {
+    if (!editForm) return
+    setSaving(true)
+    const initial = editForm.title.trim()[0].toUpperCase()
+    const { error } = await supabase.from('properties').update({ ...editForm, initial }).eq('id', editForm.id)
+    if (!error) {
+      setEditing(false)
+      setSelected({ ...editForm, initial })
       fetchProperties()
     }
     setSaving(false)
@@ -110,7 +124,7 @@ export default function PropertiesPage() {
             <div className="text-zinc-500 text-center py-20 col-span-3">No hay propiedades aún. ¡Agrega la primera!</div>
           ) : (
             properties.map((p) => (
-              <div key={p.id} onClick={() => setSelected(p)} className={`bg-zinc-900/40 border p-6 rounded-2xl hover:border-amber-500 transition-all cursor-pointer ${selected?.id === p.id ? 'border-amber-500' : 'border-zinc-800'}`}>
+              <div key={p.id} onClick={() => { setSelected(p); setEditing(false) }} className={`bg-zinc-900/40 border p-6 rounded-2xl hover:border-amber-500 transition-all cursor-pointer ${selected?.id === p.id ? 'border-amber-500' : 'border-zinc-800'}`}>
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-amber-500 text-black flex items-center justify-center font-bold text-lg">{p.initial}</div>
@@ -140,18 +154,49 @@ export default function PropertiesPage() {
               <div className="w-14 h-14 rounded-xl bg-amber-500 text-black flex items-center justify-center text-2xl font-black">{selected.initial}</div>
               <button onClick={() => setSelected(null)} className="text-zinc-500 hover:text-white text-xl">✕</button>
             </div>
-            <h2 className="text-xl font-black text-white mb-1">{selected.title}</h2>
-            <span className={`text-xs px-2 py-1 rounded ${statusColors[selected.status]}`}>{selected.status}</span>
-            <div className="mt-4 flex flex-col gap-3 text-sm">
-              {selected.type && <div><span className="text-zinc-500">Tipo</span><div className="text-white">{selected.type}</div></div>}
-              {selected.location && <div><span className="text-zinc-500">Ubicación</span><div className="text-white">{selected.location}</div></div>}
-              {selected.price && <div><span className="text-zinc-500">Precio</span><div className="text-amber-500 font-bold text-lg">{selected.price}</div></div>}
-              <div className="flex gap-4">
-                {selected.bedrooms > 0 && <div><span className="text-zinc-500">Hab.</span><div className="text-white font-bold">{selected.bedrooms}</div></div>}
-                {selected.bathrooms > 0 && <div><span className="text-zinc-500">Baños</span><div className="text-white font-bold">{selected.bathrooms}</div></div>}
-              </div>
-            </div>
-            <button onClick={() => deleteProperty(selected.id)} className="w-full mt-6 bg-red-900 text-red-300 py-2 rounded-xl text-xs hover:bg-red-800 transition-all">Eliminar Propiedad</button>
+
+            {!editing ? (
+              <>
+                <h2 className="text-xl font-black text-white mb-1">{selected.title}</h2>
+                <span className={`text-xs px-2 py-1 rounded ${statusColors[selected.status]}`}>{selected.status}</span>
+                <div className="mt-4 flex flex-col gap-3 text-sm">
+                  {selected.type && <div><span className="text-zinc-500">Tipo</span><div className="text-white">{selected.type}</div></div>}
+                  {selected.location && <div><span className="text-zinc-500">Ubicación</span><div className="text-white">{selected.location}</div></div>}
+                  {selected.price && <div><span className="text-zinc-500">Precio</span><div className="text-amber-500 font-bold text-lg">{selected.price}</div></div>}
+                  <div className="flex gap-4">
+                    {selected.bedrooms > 0 && <div><span className="text-zinc-500">Hab.</span><div className="text-white font-bold">{selected.bedrooms}</div></div>}
+                    {selected.bathrooms > 0 && <div><span className="text-zinc-500">Baños</span><div className="text-white font-bold">{selected.bathrooms}</div></div>}
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-6">
+                  <button onClick={() => { setEditing(true); setEditForm(selected) }} className="flex-1 bg-amber-500 text-black py-2 rounded-xl font-black text-xs uppercase hover:bg-white transition-all">Editar</button>
+                  <button onClick={() => deleteProperty(selected.id)} className="bg-red-900 text-red-300 px-3 py-2 rounded-xl text-xs hover:bg-red-800 transition-all">Eliminar</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-lg font-black text-amber-500 uppercase mb-4">Editar Propiedad</h2>
+                <div className="flex flex-col gap-3">
+                  <input value={editForm?.title} onChange={e => setEditForm({...editForm!, title: e.target.value})} className="bg-zinc-800 text-white px-3 py-2 rounded-xl border border-zinc-700 focus:border-amber-500 outline-none text-sm" placeholder="Título" />
+                  <input value={editForm?.type} onChange={e => setEditForm({...editForm!, type: e.target.value})} className="bg-zinc-800 text-white px-3 py-2 rounded-xl border border-zinc-700 focus:border-amber-500 outline-none text-sm" placeholder="Tipo" />
+                  <input value={editForm?.price} onChange={e => setEditForm({...editForm!, price: e.target.value})} className="bg-zinc-800 text-white px-3 py-2 rounded-xl border border-zinc-700 focus:border-amber-500 outline-none text-sm" placeholder="Precio" />
+                  <input value={editForm?.location} onChange={e => setEditForm({...editForm!, location: e.target.value})} className="bg-zinc-800 text-white px-3 py-2 rounded-xl border border-zinc-700 focus:border-amber-500 outline-none text-sm" placeholder="Ubicación" />
+                  <div className="flex gap-2">
+                    <input type="number" value={editForm?.bedrooms} onChange={e => setEditForm({...editForm!, bedrooms: parseInt(e.target.value) || 0})} className="bg-zinc-800 text-white px-3 py-2 rounded-xl border border-zinc-700 focus:border-amber-500 outline-none text-sm flex-1" placeholder="Hab." />
+                    <input type="number" value={editForm?.bathrooms} onChange={e => setEditForm({...editForm!, bathrooms: parseInt(e.target.value) || 0})} className="bg-zinc-800 text-white px-3 py-2 rounded-xl border border-zinc-700 focus:border-amber-500 outline-none text-sm flex-1" placeholder="Baños" />
+                  </div>
+                  <select value={editForm?.status} onChange={e => setEditForm({...editForm!, status: e.target.value})} className="bg-zinc-800 text-white px-3 py-2 rounded-xl border border-zinc-700 focus:border-amber-500 outline-none text-sm">
+                    <option>DISPONIBLE</option>
+                    <option>RESERVADA</option>
+                    <option>VENDIDA</option>
+                  </select>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <button onClick={() => setEditing(false)} className="flex-1 bg-zinc-800 text-white py-2 rounded-xl font-bold text-xs hover:bg-zinc-700 transition-all">Cancelar</button>
+                  <button onClick={updateProperty} disabled={saving} className="flex-1 bg-amber-500 text-black py-2 rounded-xl font-black text-xs uppercase hover:bg-white transition-all disabled:opacity-50">{saving ? '...' : 'Guardar'}</button>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
