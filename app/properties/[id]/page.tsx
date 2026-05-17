@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 
@@ -32,6 +32,7 @@ export default function PropertyPage() {
   const params = useParams()
   const id = params.id as string
   const router = useRouter()
+  const fileRef = useRef<HTMLInputElement>(null)
   const [property, setProperty] = useState<Property | null>(null)
   const [images, setImages] = useState<PropertyImage[]>([])
   const [activeIndex, setActiveIndex] = useState(0)
@@ -40,10 +41,7 @@ export default function PropertyPage() {
   const [uploadError, setUploadError] = useState('')
 
   useEffect(() => {
-    if (id) {
-      fetchProperty()
-      fetchImages()
-    }
+    if (id) { fetchProperty(); fetchImages() }
   }, [id])
 
   async function fetchProperty() {
@@ -57,20 +55,28 @@ export default function PropertyPage() {
     if (data) setImages(data)
   }
 
-  async function handleUpload(files: FileList | null) {
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files
     if (!files || !id) return
     setUploading(true)
     setUploadError('')
     for (const file of Array.from(files)) {
-      const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
-      const path = `${id}_${fileName}`
-      const { error: upErr } = await supabase.storage.from('properties').upload(path, file, { upsert: true })
-      if (upErr) { setUploadError(upErr.message); continue }
-      const { data } = supabase.storage.from('properties').getPublicUrl(path)
-      await supabase.from('property_images').insert([{ property_id: id, image_url: data.publicUrl }])
+      const ext = file.name.split('.').pop()
+      const path = `${id}_${Date.now()}.${ext}`
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('path', path)
+      const res = await fetch('/api/upload', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (data.url) {
+        await supabase.from('property_images').insert([{ property_id: id, image_url: data.url }])
+      } else {
+        setUploadError(data.error || 'Error subiendo imagen')
+      }
     }
-    fetchImages()
+    await fetchImages()
     setUploading(false)
+    if (fileRef.current) fileRef.current.value = ''
   }
 
   async function deleteImage(imageId: string) {
@@ -111,7 +117,7 @@ export default function PropertyPage() {
             )}
           </div>
           {uploadError && <div className="mt-2 text-red-400 text-xs">{uploadError}</div>}
-          <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+          <div className="flex gap-2 mt-3 overflow-x-auto pb-1 items-center">
             {allImages.map((img, i) => (
               <div key={img.id} className="relative flex-shrink-0 group">
                 <img src={img.image_url} onClick={() => setActiveIndex(i)} className={`w-20 h-20 object-cover rounded-xl cursor-pointer border-2 ${i === activeIndex ? 'border-amber-500' : 'border-zinc-700'}`} />
@@ -120,11 +126,11 @@ export default function PropertyPage() {
                 )}
               </div>
             ))}
-            <label className={`w-20 h-20 flex-shrink-0 border-2 border-dashed border-zinc-700 hover:border-amber-500 rounded-xl flex flex-col items-center justify-center cursor-pointer text-zinc-500 hover:text-amber-500 transition-all ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+            <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleUpload} />
+            <button onClick={() => fileRef.current?.click()} disabled={uploading} className="w-20 h-20 flex-shrink-0 border-2 border-dashed border-zinc-700 hover:border-amber-500 rounded-xl flex flex-col items-center justify-center text-zinc-500 hover:text-amber-500 transition-all disabled:opacity-50">
               <span className="text-2xl">+</span>
               <span className="text-xs">{uploading ? '...' : 'Foto'}</span>
-              <input type="file" accept="image/*" multiple className="hidden" onChange={e => handleUpload(e.target.files)} />
-            </label>
+            </button>
           </div>
         </div>
         <div>
